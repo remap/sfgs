@@ -28,7 +28,7 @@ import logging
 import traceback
 from datetime import datetime
 
-logger = None
+logger = logging.Logger('main')
 ndnpath = 'C:\Python33\Lib\site-packages\PyNDN-2.0b3-py3.3.egg'
 if ndnpath not in sys.path:
     sys.path.append(ndnpath)
@@ -49,6 +49,7 @@ def dump(*list):
         result += (element if type(element) is str else repr(element)) + " "
     print(result.encode('cp437', errors='replace').decode('cp437'))
 
+#####################################################################
 class DataFetcher(object):
 	"""
 	Provides simple interface for fetching NDN data
@@ -65,7 +66,7 @@ class DataFetcher(object):
 	def onTimeout(self, interest):
 		raise NotImplementedError("should be implemented")
 
-
+#####################################################################
 class Pipeliner(DataFetcher):
 	"""
 	Retrieves latest data which has sequential number defined 
@@ -106,6 +107,7 @@ class Pipeliner(DataFetcher):
 		self.expressInterest(outstandingInterest)
 
 	def expressInterest(self, interest):
+		logger.debug("express "+str(interest.getName().toUri()))
 		interest.setInterestLifetimeMilliseconds(self.interestLifetimeMs)
 		super(Pipeliner, self).expressInterest(interest)
 
@@ -128,6 +130,7 @@ class Pipeliner(DataFetcher):
 		logger.debug("timeout %r"%(interest.getName().toUri()))
 		self.expressInterest(interest)
 
+#####################################################################
 class StreamTimestamp(object):
 	def __init__(self, timestampStr, framerate = 30):
 		self.str = timestampStr
@@ -167,7 +170,7 @@ class StreamTimestamp(object):
 	def __repr__(self):
 		return self.__str__()
 
-
+#####################################################################
 class EditEvent(object):
 	eventIdKey = 'event_id'
 	reelNameKey = 'reel_name'
@@ -199,19 +202,27 @@ class EditEvent(object):
 	def __repr__(self):
 		return self.__str__()
 
-def onNewEvent(seqNo, data):
-	eventData = None
-	try:
-		eventData = json.loads(str(data))
-		logger.debug('parsed event data: %r'%eventData)
-	except Exception as e:
-		logger.warning('error parsing json data (%r): %r'%(str(data), e))
-	try:
-		event = EditEvent(eventData)
-		logger.info("new event received: %r"%(event))
-	except Exception as e:
-		logger.warning('error creating EditEvent: %r'%(e))
+#####################################################################
+class EventPoller(Pipeliner):
+	def __init__(self, face, ndnPath, onNewEvent):
+		super(EventPoller, self).__init__(face, ndnPath, self.onNewData)
+		self.onNewEvent = onNewEvent
 
+	def onNewData(self, seqNo, data):
+		eventData = None
+		try:
+			eventData = json.loads(str(data))
+			logger.debug('parsed event data: %r'%eventData)
+		except Exception as e:
+			logger.warning('error parsing json data (%r): %r'%(str(data), e))
+		try:
+			event = EditEvent(eventData)
+			logger.info("new event received: %r"%(event))
+			self.onNewEvent(event)
+		except Exception as e:
+			logger.warning('error creating EditEvent: %r'%(e))
+
+#####################################################################
 if __name__ == '__main__':
 	face = Face("localhost")
 	p = Pipeliner(face, "/test/edl", onNewEvent)
