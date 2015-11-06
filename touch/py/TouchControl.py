@@ -305,6 +305,14 @@ class StreamingResourceAllocator(ControllableComp):
 	def __init__(self, componentPath, opFunc, rootVar):
 		ControllableComp.__init__(self, componentPath, opFunc, rootVar)
 
+	def getResources(self):
+		resources = []
+		pipelines = ops(self.compPath+'/pipeline*')
+		for pp in pipelines:
+			p = YtPipelineController(pp.path, op, root)
+			resources.append(p)
+		return resources
+
 	@staticmethod
 	def instantiate(containerPath, opFunc, rootVar):
 		comp = StreamingResourceAllocator.loadTox(opFunc, rootVar, containerPath, StreamingResourceAllocator.filePath)

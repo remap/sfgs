@@ -28,10 +28,7 @@ import logging
 import traceback
 from datetime import datetime
 
-logger = logging.Logger('main')
-ndnpath = 'C:\Python33\Lib\site-packages\PyNDN-2.0b3-py3.3.egg'
-if ndnpath not in sys.path:
-    sys.path.append(ndnpath)
+logger = None
 
 from pyndn import Name
 from pyndn import Face
@@ -107,11 +104,13 @@ class Pipeliner(DataFetcher):
 		self.expressInterest(outstandingInterest)
 
 	def expressInterest(self, interest):
+		global logger
 		logger.debug("express "+str(interest.getName().toUri()))
 		interest.setInterestLifetimeMilliseconds(self.interestLifetimeMs)
 		super(Pipeliner, self).expressInterest(interest)
 
 	def onData(self, interest, data):
+		global logger
 		logger.debug("incoming with name %r"%(data.getName().toUri()))
 		logger.debug("received data %r"%(data.getName().toUri()))
 		seqNoComp = data.getName().get(-1).toEscapedString() 
@@ -127,6 +126,7 @@ class Pipeliner(DataFetcher):
 			self.keepPipeline()
 
 	def onTimeout(self, interest):
+		global logger
 		logger.debug("timeout %r"%(interest.getName().toUri()))
 		self.expressInterest(interest)
 
@@ -157,6 +157,14 @@ class StreamTimestamp(object):
 		frameTimestamp += self.sec * self.framerate
 		frameTimestamp += self.min * 60 * self.framerate
 		frameTimestamp += self.hour * 3600 * self.framerate
+		return frameTimestamp
+
+	def toSeconds(self):
+		secondTimestamp = self.frame/self.framerate
+		secondTimestamp += self.sec
+		secondTimestamp += self.min * 60
+		secondTimestamp += self.hour * 3600
+		return secondTimestamp
 
 	def __eq__(self, other):
 		return self.toFrames() == other.toFrames()
@@ -184,7 +192,7 @@ class EditEvent(object):
 
 	def __init__(self, jsonData):
 		self.jsonData = jsonData
-		self.id = jsonData[self.eventIdKey]
+		self.id = int(jsonData[self.eventIdKey])
 		self.videoStartTime = StreamTimestamp(jsonData[self.srcStartTimeKey])
 		self.videoEndTime = StreamTimestamp(jsonData[self.srcEndTimeKey])
 		self.videoUrl = jsonData[self.srcUrlKey]
@@ -202,6 +210,12 @@ class EditEvent(object):
 	def __repr__(self):
 		return self.__str__()
 
+	def getSrcDuration(self):
+		return self.videoEndTime.toSeconds()-self.videoStartTime.toSeconds()
+
+	def getClipDuration(self):
+		return self.clipEndTime.toSeconds()-self.clipStartTime.toSeconds()
+
 #####################################################################
 class EventPoller(Pipeliner):
 	def __init__(self, face, ndnPath, onNewEvent):
@@ -209,6 +223,7 @@ class EventPoller(Pipeliner):
 		self.onNewEvent = onNewEvent
 
 	def onNewData(self, seqNo, data):
+		global logger
 		eventData = None
 		try:
 			eventData = json.loads(str(data))
@@ -217,10 +232,9 @@ class EventPoller(Pipeliner):
 			logger.warning('error parsing json data (%r): %r'%(str(data), e))
 		try:
 			event = EditEvent(eventData)
-			logger.info("new event received: %r"%(event))
 			self.onNewEvent(event)
 		except Exception as e:
-			logger.warning('error creating EditEvent: %r'%(e))
+			logger.warning('error creating EditEvent: %r\ndata: %r'%(e, eventData))
 
 #####################################################################
 if __name__ == '__main__':

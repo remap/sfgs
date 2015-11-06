@@ -18,6 +18,24 @@
 # 
 #	Author: Peter Gusev, peter@remap.ucla.edu
 
+import logging 
+
+logger = None
+
 class EventDispatcher(object):
+	def __init__(self):
+		self.eventsQueue = []
+
 	def onNewEvent(self, event):
-		print('new event received: '+str(event))
+		global logger
+		logger.debug('new event received: '+str(event)+' queue len '+str(len(self.eventsQueue)))
+		self.eventsQueue.append(event)
+
+	def popUpcomingEvent(self):
+		if len(self.eventsQueue) > 0:
+			eventsByStartTime = sorted(self.eventsQueue, key=lambda e: e.dstStartTimeKey, reverse=False)
+			upcoming = eventsByStartTime[0]
+			del eventsByStartTime[0]
+			self.eventsQueue = eventsByStartTime
+			return upcoming
+		return None
