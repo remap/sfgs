@@ -1,0 +1,48 @@
+/** css for collaboration form**/
+
+red, .red
+{
+	color:#FF0004;
+}
+
+.row
+{
+	margin:5px;
+	padding:5px;
+}
+.row label
+{
+	font-weight:bold;
+	width:150px;
+}
+
+.row .field
+{
+	width:300px;
+	padding:3px;
+}
+
+.row .error_message
+{
+	color:#FF0004;
+	margin-left:20px;
+}
+
+.row .terms
+{
+	border:1px solid;
+	width:500px;
+	overflow-y: scroll; 
+	height:200px;
+}
+
+green
+{
+	color:#d6552a;
+}
+
+#form_sending
+{
+	float:left;
+	text-align:left;
+}
