@@ -11,6 +11,7 @@ use phpcassa\ColumnSlice;
 	// Start a connection pool, create our ColumnFamily instance
 	$pool = new ConnectionPool('s4gs', array('127.0.0.1'));	
 	$collab_user = new ColumnFamily($pool, 'users');
+	$wp_user = new ColumnFamily($pool, 'wp_emails');
 	
 
 	
@@ -43,9 +44,60 @@ if(isset($_GET['action']))
 		
 	
 }
-else
 {
-     echo 'Please perform some action';
+     echo '<br/>Users registered for collaboration';
+
+    $rows = $wp_user ->get_range("", "", 1000000, null, array('email'));
+
+echo '
+<div class="container">
+<table id="table_id" class="bordered">
+    <thead>
+        <tr>
+            <th>S.N.</th>
+            <th>Email</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Affiliation</th>
+            <th>Location</th>
+            <th>Website</th>
+            <th>G+ URL</th>
+            <th>Youtube URL</th>
+            <th>Videos Count</th>
+            <th>Script Progress</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>';
+    $i=1;
+    foreach($rows as $key => $columns) 
+    {
+    $data = $collab_user ->get($columns['email']);
+echo'
+        <tr>
+            <td>'.$i++.'</td>
+            <td>'.$columns['email'].'</td>
+            <td>'.$data ['first_name'].'</td>
+            <td>'.$data ['last_name'].'</td>
+            <td>'.$data ['aff'].'</td>
+            <td>'.$data ['location'].'</td>
+            <td>'.$data ['website'].'</td>
+            <td>'.$data ['url_gplus'].'</td>
+            <td>'.$data ['url_yt'].'</td>
+            <td>'.$data ['videos_count'].'</td>
+            <td>'.$data ['script_progress'].'</td>
+            <td>'.$data ['status'].'</td>
+            <td><a href="?action=changeStatus&email='.$columns['email'].'&status=Approved">Approve</a> <a href="?action=changeStatus&email='.$columns['email'].'&status=Denied">Deny</a></td>
+        </tr>
+';
+    }
+echo '
+    </tbody>
+</table>
+</div>
+';
+
 }
 
 
