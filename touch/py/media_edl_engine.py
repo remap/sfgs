@@ -19,6 +19,7 @@
 #	Author: Peter Gusev, peter@remap.ucla.edu
 
 import time
+import main
 from edl_engine import EndEvent
 
 logger = None
@@ -148,7 +149,7 @@ class VideoEdlEngine(object):
 		global logger
 		if isinstance(event, EndEvent):
 			logger.info('end event received: '+str(event))
-			self.timeline.scheduleOperations(self.clipMaxTime, [DispatchOperation(self.cleanupCurrentRun)])
+			self.timeline.scheduleOperations(self.clipMaxTime+2, [DispatchOperation(self.cleanupCurrentRun)])
 		else:
 			if event and (event.channel == 'V' or event.channel == 'AA/V') \
 			and (event.videoUrl != None and event.videoUrl != 'none'):
@@ -164,6 +165,7 @@ class VideoEdlEngine(object):
 
 	def cleanupCurrentRun(self):
 		logger.info('clip is over. cleaning up now...')
+		main.reset()
 
 	def scheduleOnResource(self, event, res):
 		global logger
