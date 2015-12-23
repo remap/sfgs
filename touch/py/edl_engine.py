@@ -156,14 +156,16 @@ class StreamTimestamp(object):
 		frameTimestamp = self.frame
 		frameTimestamp += self.sec * self.framerate
 		frameTimestamp += self.min * 60 * self.framerate
-		frameTimestamp += self.hour * 3600 * self.framerate
+		# workaround for bad timestamps
+		#frameTimestamp += self.hour * 3600 * self.framerate
 		return frameTimestamp
 
 	def toSeconds(self):
 		secondTimestamp = self.frame/self.framerate
 		secondTimestamp += self.sec
 		secondTimestamp += self.min * 60
-		secondTimestamp += self.hour * 3600
+		# workaround for bad timestamps
+		#secondTimestamp += self.hour * 3600
 		return secondTimestamp
 
 	def __eq__(self, other):

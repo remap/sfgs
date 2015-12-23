@@ -31,6 +31,9 @@ class DispatchOperation(Operation):
 		self.func = func
 		self.priority = self.OperationPriorityLowest
 
+	def __str__(self):
+		return "dispatch"
+
 	def run(self, t):
 		self.func()
 
@@ -48,6 +51,9 @@ class PreloadOperation(VideoOperation):
 		self.priority = self.OperationPriorityInitiate
 		self.event = event
 
+	def __str__(self):
+		return "preload"
+
 	def run(self, time):
 		global logger
 		logger.info(str(time)+' preload operation for '+str(self.ppController.compPath)+' ('+str(self.ppController.ytController.url)+\
@@ -63,6 +69,9 @@ class StartPlaybackOperation(VideoOperation):
 		super(StartPlaybackOperation, self).__init__(ppController)
 		self.priority = self.OperationPriorityInitiate
 
+	def __str__(self):
+		return "start playback"
+
 	def run(self, time):
 		global logger
 		logger.info(str(time)+' start playback '+str(self.ppController.compPath)+' ('+str(self.ppController.ytController.url)+')')
@@ -73,6 +82,9 @@ class StopPlaybackOperation(VideoOperation):
 	def __init__(self, ppController):
 		super(StopPlaybackOperation, self).__init__(ppController)
 		self.priority = self.OperationPriorityFinalize
+
+	def __str__(self):
+		return "stop playback"
 
 	def run(self, time):
 		global logger
@@ -87,6 +99,9 @@ class ReleaseResourceOperation(Operation):
 		self.resMan = resMan
 		self.priority = self.OperationPriorityFinalize
 
+	def __str__(self):
+		return "release resource"
+
 	def run(self, time):
 		logger.info(str(time)+' release resource '+str(self.res.compPath)+' ('+str(self.res.ytController.url)+')')
 		self.resMan.freeResource(self.res)
@@ -96,6 +111,9 @@ class SwitchLiveOperation(Operation):
 		self.res = res
 		self.switch = switch
 		self.priority = self.OperationPriorityTransit
+
+	def __str__(self):
+		return "switch live"
 
 	def run(self, time):
 		if self.res.op.digits <= self.switch.nInputs:
@@ -151,17 +169,23 @@ class VideoEdlEngine(object):
 			logger.info('end event received: '+str(event))
 			self.timeline.scheduleOperations(self.clipMaxTime+2, [DispatchOperation(self.cleanupCurrentRun)])
 		else:
-			if event and (event.channel == 'V' or event.channel == 'AA/V') \
-			and (event.videoUrl != None and event.videoUrl != 'none'):
-				logger.debug('processing event '+str(event))
-				if self.startTime == None and event.id != 1:
-					logger.warn("event processing hasn't started (event #1 was never received)")
-				else:
-					logger.debug('event id is '+str(event.id))
-					if event.id == 1:
-						self.startTime = time.time()+self.preloadTime
-						logger.debug('first event. start time is at '+str(self.startTime)+'('+str(self.startTime-time.time())+' seconds from now)')
+			if event:
+				if event.id == 1 and self.startTime == None:
+					self.startTime = time.time()+self.preloadTime
+					logger.debug('first event is '+str(event.id)+'. start time is at '+str(self.startTime)+'('+str(self.startTime-time.time())+' seconds from now)')
+
+				if (event.channel == 'V' or event.channel == 'AA/V') \
+				and (event.videoUrl != None): # and event.videoUrl != 'none'):
+					logger.debug('processing event '+str(event))
 					self.scheduleOnResource(event, res)
+					# if self.startTime == None and event.id != 1:
+					# 	logger.warn("event processing hasn't started (event #1 was never received)")
+					# else:
+					# 	logger.debug('event id is '+str(event.id))
+					# 	if event.id == 1:
+					# 		self.startTime = time.time()+self.preloadTime
+					# 		logger.debug('first event. start time is at '+str(self.startTime)+'('+str(self.startTime-time.time())+' seconds from now)')
+					# 	self.scheduleOnResource(event, res)
 
 	def cleanupCurrentRun(self):
 		logger.info('clip is over. cleaning up now...')
@@ -171,25 +195,34 @@ class VideoEdlEngine(object):
 		global logger
 		logger.info("scheduling event "+str(event)+" on resource "+str(res.compPath))
 		self.resMan.occupyResource(res)
+		hasVideoUrl = (event.videoUrl != 'none')
 
 		t = 0
-		# schedule preloading
-		self.timeline.scheduleOperationFromNow(t, PreloadOperation(event, res))
 
-		# schedule playback start
-		t += self.startTime + event.clipStartTime.toSeconds()
-		# temporary workaround:
-		# schedule start playback operation 10ms earlier to avoid
-		# blinking when switching b/w clips
-		self.timeline.scheduleOperations(t-0.01, [StartPlaybackOperation(res)])
-		self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch)])
+		if hasVideoUrl:
+			# schedule preloading
+			self.timeline.scheduleOperationFromNow(t, PreloadOperation(event, res))
 
-		# schedule playback stop
-		t += event.getClipDuration()
-		self.timeline.scheduleOperations(t, [StopPlaybackOperation(res)])
+			# schedule playback start
+			t += self.startTime + event.clipStartTime.toSeconds()
+			# temporary workaround:
+			# schedule start playback operation 10ms earlier to avoid
+			# blinking when switching b/w clips
+			self.timeline.scheduleOperations(t-0.01, [StartPlaybackOperation(res)])
+			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch)])
 
-		# schedule resource release
-		self.timeline.scheduleOperations(t, [ReleaseResourceOperation(res, self.resMan)])
+			# schedule playback stop
+			t += event.getClipDuration()
+			self.timeline.scheduleOperations(t, [StopPlaybackOperation(res)])
+
+			# schedule resource release
+			self.timeline.scheduleOperations(t, [ReleaseResourceOperation(res, self.resMan)])
+		else: # treat as blackout
+			logger.debug('event has no video URL. treated as blackout.')
+			t += self.startTime + event.clipStartTime.toSeconds()
+			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch)])
+			self.timeline.scheduleOperations(t, [StopPlaybackOperation(res)])
+			self.timeline.scheduleOperations(t, [ReleaseResourceOperation(res, self.resMan)])
 		
 		if t > self.clipMaxTime:
 			self.clipMaxTime = t
