@@ -173,11 +173,11 @@ class VideoEdlEngine(object):
 				if event.id == 1 and self.startTime == None:
 					self.startTime = time.time()+self.preloadTime
 					logger.debug('first event is '+str(event.id)+'. start time is at '+str(self.startTime)+'('+str(self.startTime-time.time())+' seconds from now)')
-
-				if (event.channel == 'V' or event.channel == 'AA/V') \
-				and (event.videoUrl != None): # and event.videoUrl != 'none'):
-					logger.debug('processing event '+str(event))
-					self.scheduleOnResource(event, res)
+				if self.startTime:
+					if (event.channel == 'V' or event.channel == 'AA/V') \
+					and (event.videoUrl != None): # and event.videoUrl != 'none'):
+						logger.debug('processing event '+str(event))
+						self.scheduleOnResource(event, res)
 					# if self.startTime == None and event.id != 1:
 					# 	logger.warn("event processing hasn't started (event #1 was never received)")
 					# else:
