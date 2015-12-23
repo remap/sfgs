@@ -1,0 +1,138 @@
+<link rel="stylesheet" type="text/css" href="../../custom-code/collab.css">
+[insert_php]
+global $user_email;
+get_currentuserinfo();
+//$_SESSION['wp_email']=$user_email;
+echo '<input id="wp_email" name="wp_email" type="hidden" value="'.$user_email.'" />';
+
+//include('custom-code/check_wp.php');
+
+
+require_once('custom-code/lib/autoload.php');
+use phpcassa\Connection\ConnectionPool;
+use phpcassa\ColumnFamily;
+use phpcassa\SystemManager;
+use phpcassa\Schema\StrategyClass;
+use phpcassa\ColumnSlice;
+		
+				// Create a  new keyspace and column family
+				$sys = new SystemManager('127.0.0.1');
+				// Start a connection pool, create our ColumnFamily instance
+				$pool = new ConnectionPool('s4gs', array('127.0.0.1'));
+				
+				$exist_user = new ColumnFamily($pool, 'wp_emails');
+				$existing_emails=$exist_user->get_count($user_email);
+				$pool->close(); 
+				
+				$sys->close();
+				
+if($existing_emails<1)
+{
+//New Reigstration Form
+     $_SESSION['wp_exists']='no';
+     
+echo '
+<div class="row"><green id="success_msg"></green></div>
+<div id="reg_form">
+<div class="row">In order to create your own version, please fill out the form below:</div>
+<div class="row"><span id="error_msg" class="error_message red"></span></div>
+<form id="custom_form" action="#" onsubmit="return register();">
+<div class="row"><label for="fname">First Name<red>*</red>:</label> <input id="fname" class="field" tabindex="11" name="fname" required type="text" /></div>
+<div class="row"><label for="lname">Last Name<red>*</red>:</label> <input id="lname" class="field" tabindex="12" name="lname" required type="text" /></div>
+<div class="row"><label for="location">Primary Location<red>*</red>:</label> <input id="location" class="field" tabindex="13" name="location" required type="text" /></div>
+<div class="row"><label for="affiliation">Affiliation<red>*</red>:</label> <input id="affiliation" class="field" tabindex="14" name="affiliation" required type="text" /></div>
+<div class="row"><label for="email">Email<red>*</red>:</label> <input id="email" class="field" tabindex="15" name="email" required type="email" /></div>
+<div class="row"><label for="reemail">Confirm Email<red>*</red>:</label> <input id="reemail" class="field" tabindex="16" name="reemail" required type="email" /></div>
+<div class="row"><label for="website">Website<red>*</red>:</label> <input id="website" class="field" tabindex="17" name="website" required type="text" /></div>
+<div class="row"><label for="pass">Password<red>*</red>:</label> <input id="pass" class="field" tabindex="18" name="pass" required type="password" /></div>
+<div class="row"><label for="confpass">Confirm Password<red>*</red>:</label> <input id="confpass" class="field" tabindex="19" name="confpass" required type="password" /></div>
+<div class="row"><label for="terms">Terms &amp; Conditions<red>*</red>:</label> <input id="termchk" tabindex="20" name="termchk" required type="checkbox" /> I Agree</div>
+<div class="row">
+<div class="terms">Terms Conditions here</div>
+</div>
+<div class="row"><input id="form_submit" name="form_submit" type="submit" value="apply" tabindex="21" /><img id="form_sending" title="loading" src="../../custom-code/loading.svg" alt="loading" /></div>
+</form></div>
+<div class="row"></div>
+';
+}
+
+else
+{
+     $_SESSION['wp_exists']='yes';
+
+				// Create a  new keyspace and column family
+				$sys = new SystemManager('127.0.0.1');
+				// Start a connection pool, create our ColumnFamily instance
+				$pool = new ConnectionPool('s4gs', array('127.0.0.1'));
+				
+
+				$exist_user = new ColumnFamily($pool, 'wp_emails');
+				$collab_registered_email=$exist_user->get($user_email);
+
+				$user_data= new ColumnFamily($pool, 'users');
+				$user_data=$user_data->get($collab_registered_email['email']);
+				$pool->close(); 
+				
+				$sys->close();
+
+
+  if($user_data['status']=='Applied')
+  {
+    echo '<green>Your form has been sent for approval</green>
+
+<div id="reg_form">
+    <div class="row">Your Profile:</div>
+    <div class="row"><label for="fname">First Name:</label> <input id="fname" class="field" value="'.$user_data['first_name'].'" tabindex="11" name="fname" type="text" readonly /></div>
+    <div class="row"><label for="lname">Last Name:</label> <input id="lname" class="field" value="'.$user_data['last_name'].'"  tabindex="12" name="lname" type="text" readonly/></div>
+    <div class="row"><label for="location">Primary Location:</label> <input id="location" class="field" value="'.$user_data['location'].'"  tabindex="13" name="location" type="text" readonly/></div>
+    <div class="row"><label for="affiliation">Affiliation:</label> <input id="affiliation" class="field" value="'.$user_data['aff'].'"  tabindex="14" name="affiliation" type="text" readonly/></div>
+    <div class="row"><label for="email">Email:</label> <input id="email" class="field" value="'.$collab_registered_email['email'].'"  tabindex="15" name="email" type="text" readonly/></div>
+    <div class="row"><label for="website">Website:</label> <input id="website" class="field" value="'.$user_data['website'].'"  tabindex="16" name="website" type="text" readonly/></div>
+  </div>
+
+
+';
+  }
+
+  else  if($user_data['status']=='Approved')
+  {
+echo '
+<div class="row"><green id="success_msg"></green></div>
+<div id="reg_form">
+<div class="row">In order to update your profile, please fill out the form below:</div>
+<div class="row"><span id="error_msg" class="error_message red"></span></div>
+<form id="custom_form" action="#" onsubmit="return update();">
+<div class="row"><label for="fname">First Name<red>*</red>:</label> <input id="fname" class="field" tabindex="11" name="fname" required type="text" value="'.$user_data['first_name'].'"/></div>
+<div class="row"><label for="lname">Last Name<red>*</red>:</label> <input id="lname" class="field" tabindex="12" name="lname" required type="text" value="'.$user_data['last_name'].'"/></div>
+<div class="row"><label for="location">Primary Location<red>*</red>:</label> <input id="location" class="field" tabindex="13" name="location" required type="text" value="'.$user_data['location'].'"/></div>
+<div class="row"><label for="affiliation">Affiliation<red>*</red>:</label> <input id="affiliation" class="field" tabindex="14" name="affiliation" required type="text" value="'.$user_data['aff'].'"/></div>
+<div class="row"><label for="email">Email<red>*</red>:</label> <input id="email" class="field" tabindex="15" name="email" required type="email" value="'.$collab_registered_email['email'].'"/></div>
+<div class="row"><label for="reemail">Confirm Email<red>*</red>:</label> <input id="reemail" class="field" tabindex="16" name="reemail" required type="email" value="'.$collab_registered_email['email'].'"/></div>
+<div class="row"><label for="website">Website<red>*</red>:</label> <input id="website" class="field" tabindex="17" name="website" required type="text" value="'.$user_data['website'].'"/></div>
+<div class="row"><label for="current_pass1">Current Password:<red>*</red>:</label> <input id="current_pass1" class="field" tabindex="17" name="current_pass1" required type="password"/></div>
+<div class="row"><input id="form_submit" name="form_submit" type="submit" value="Update" tabindex="21" /><img id="form_sending" title="loading" src="../../custom-code/loading.svg" alt="loading" /></div>
+</form></div>
+<div class="row"></div>
+';
+  }
+
+  else
+  {
+    echo '<span class="red">Your form has been rejected by admin</span >
+
+<div id="reg_form">
+    <div class="row">Your Profile:</div>
+    <div class="row"><label for="fname">First Name:</label> <input id="fname" class="field" value="'.$user_data['first_name'].'" tabindex="11" name="fname" type="text" readonly /></div>
+    <div class="row"><label for="lname">Last Name:</label> <input id="lname" class="field" value="'.$user_data['last_name'].'"  tabindex="12" name="lname" type="text" readonly/></div>
+    <div class="row"><label for="location">Primary Location:</label> <input id="location" class="field" value="'.$user_data['location'].'"  tabindex="13" name="location" type="text" readonly/></div>
+    <div class="row"><label for="affiliation">Affiliation:</label> <input id="affiliation" class="field" value="'.$user_data['aff'].'"  tabindex="14" name="affiliation" type="text" readonly/></div>
+    <div class="row"><label for="email">Email:</label> <input id="email" class="field" value="'.$collab_registered_email['email'].'"  tabindex="15" name="email" type="text" readonly/></div>
+    <div class="row"><label for="website">Website:</label> <input id="website" class="field" value="'.$user_data['website'].'"  tabindex="16" name="website" type="text" readonly/></div>
+  </div>
+
+';
+  }
+}
+[/insert_php]
+<script src="../../custom-code/collaboration.js" type="text/javascript"></script>
+
