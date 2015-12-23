@@ -21,6 +21,8 @@
 import time
 from collections import OrderedDict
 
+logger = None
+
 #####################################################################
 class Timeline(object):
 	operationsQueue = None
@@ -29,18 +31,23 @@ class Timeline(object):
 		self.operationsQueue = {} #OrderedDict()
 
 	def scheduleOperations(self, absTimeSec, operations):
+		global logger
+		now = time.time()
+		logger.debug('for '+str(absTimeSec)+' ('+str(absTimeSec-now)+' sec from now) scheduled ops: '+str(operations))
 		if (absTimeSec in self.operationsQueue.keys()):
 			self.operationsQueue[absTimeSec].extend(operations)
 		else:
 			self.operationsQueue[absTimeSec] = operations
 
 	def scheduleOperationFromNow(self, seconds, operation):
+		global logger
 		nowSec = time.time()
 		self.scheduleOperations(nowSec+seconds, [operation])
 		return nowSec
 
 	def runOperations(self, operations):
-		for o in operations:
+		operationsByPriority = sorted(operations, key=lambda o: o.priority, reverse=False)
+		for o in operationsByPriority:
 			o.run(time.time())
 
 	def run(self):

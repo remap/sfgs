@@ -33,7 +33,7 @@ class EventDispatcher(object):
 
 	def popUpcomingEvent(self):
 		if len(self.eventsQueue) > 0:
-			eventsByStartTime = sorted(self.eventsQueue, key=lambda e: e.dstStartTimeKey, reverse=False)
+			eventsByStartTime = sorted(self.eventsQueue, key=lambda e: e.clipStartTime, reverse=False)
 			upcoming = eventsByStartTime[0]
 			del eventsByStartTime[0]
 			self.eventsQueue = eventsByStartTime

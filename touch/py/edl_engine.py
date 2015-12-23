@@ -179,7 +179,33 @@ class StreamTimestamp(object):
 		return self.__str__()
 
 #####################################################################
-class EditEvent(object):
+class Event(object):
+	eventIdKey = 'event_id'
+
+	def __init__(self, jsonData):
+		self.jsonData = jsonData
+		self.id = int(jsonData[self.eventIdKey])
+
+	def __str__(self):
+		return "["+str(seld.id)+"| empty ]"
+
+	def __repr__(self):
+		return self.__str__()
+
+class EndEvent(Event):
+	srcUrlKey = 'src_url'
+	endToken = 'end'
+
+	def __init__(self, jsonData):
+		super(EndEvent, self).__init__(jsonData)
+		if jsonData[self.srcUrlKey] != self.endToken:
+			raise Exception('bad format', 'end event is not formatted correctly')
+		self.clipStartTime = StreamTimestamp('23:59:59:29')
+
+	def __str__(self):
+		return "["+str(self.id)+" | end ]"
+
+class EditEvent(Event):
 	eventIdKey = 'event_id'
 	reelNameKey = 'reel_name'
 	srcStartTimeKey = 'src_start_time'
@@ -191,8 +217,7 @@ class EditEvent(object):
 	channelKey = 'channel'
 
 	def __init__(self, jsonData):
-		self.jsonData = jsonData
-		self.id = int(jsonData[self.eventIdKey])
+		super(EditEvent, self).__init__(jsonData)
 		self.videoStartTime = StreamTimestamp(jsonData[self.srcStartTimeKey])
 		self.videoEndTime = StreamTimestamp(jsonData[self.srcEndTimeKey])
 		self.videoUrl = jsonData[self.srcUrlKey]
@@ -203,12 +228,11 @@ class EditEvent(object):
 		if self.channelKey in jsonData.keys(): self.channel = jsonData[self.channelKey]
 
 	def __str__(self):
-		return "[" + str(self.id)+"-"+str(self.channel)+"|"+str(self.videoUrl)+" "+\
+		return "[" + str(self.id)+"-"+str(self.channel)+"|"+str(self.videoUrl[:77])+"... "+\
 		str(self.videoStartTime)+"-"+str(self.videoEndTime)+"==>"+\
-		str(self.clipStartTime)+"-"+str(self.clipEndTime)+"]"
-
-	def __repr__(self):
-		return self.__str__()
+		str(self.clipStartTime)+"-"+str(self.clipEndTime)+\
+		"("+"{0:.2f}".format(self.videoStartTime.toSeconds())+"-"+"{0:.2f}".format(self.videoEndTime.toSeconds())+"==>"+\
+		"{0:.2f}".format(self.clipStartTime.toSeconds())+"-"+"{0:.2f}".format(self.clipEndTime.toSeconds())+")"+"]"
 
 	def getSrcDuration(self):
 		return self.videoEndTime.toSeconds()-self.videoStartTime.toSeconds()
@@ -230,11 +254,19 @@ class EventPoller(Pipeliner):
 			logger.debug('parsed event data: %r'%eventData)
 		except Exception as e:
 			logger.warning('error parsing json data (%r): %r'%(str(data), e))
+		event = None
 		try:
 			event = EditEvent(eventData)
-			self.onNewEvent(event)
 		except Exception as e:
-			logger.warning('error creating EditEvent: %r\ndata: %r'%(e, eventData))
+			logger.warning('error creating EditEvent: %r, trying EndEvent...'%(e))
+		if event == None:
+			try:
+				event = EndEvent(eventData)
+				logger.info('end event created '+str(event))
+			except Exception as e:
+				logger.warning('error creating EndEvent: %r\ndata: %r'%(e, eventData))
+		if event != None:
+			self.onNewEvent(event)
 
 #####################################################################
 if __name__ == '__main__':
