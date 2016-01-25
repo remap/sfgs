@@ -93,6 +93,8 @@ def insert_broadcast(youtube, options):
     insert_broadcast_response["id"], snippet["title"], snippet["publishedAt"])
   return insert_broadcast_response["id"]
 
+
+streamglobal = "none"
 # Create a liveStream resource and set its title, format, and ingestion type.
 # This resource describes the content that you are transmitting to YouTube.
 def insert_stream(youtube, options):
@@ -117,16 +119,36 @@ def insert_stream(youtube, options):
 
 # Bind the broadcast to the video stream. By doing so, you link the video that
 # you will transmit to YouTube to the broadcast that the video is for.
+
 def bind_broadcast(youtube, broadcast_id, stream_id):
   bind_broadcast_response = youtube.liveBroadcasts().bind(
     part="id,contentDetails",
     id=broadcast_id,
     streamId=stream_id
   ).execute()
-
   print "Broadcast '%s' was bound to stream '%s'." % (
     bind_broadcast_response["id"],
     bind_broadcast_response["contentDetails"]["boundStreamId"])
+
+  list_streams(youtube, bind_broadcast_response["contentDetails"]["boundStreamId"])
+
+def list_streams(youtube, sid):
+  print "Live streams: %s",sid
+
+  list_streams_request = youtube.liveStreams().list(
+    part="id,snippet,cdn",
+    mine=True,
+    maxResults=50
+  )
+  while list_streams_request:
+    list_streams_response = list_streams_request.execute()
+    for stream in list_streams_response.get("items", []):
+        if stream["id"] == sid:
+            print "\n----------Stream Information----------"
+            print "\n Title: %s\n ID: %s\n Name (to use in encoder):%s\n Server URL (Common for all streams.): rtmp://a.rtmp.youtube.com/live2\n Backup Server URL (Common for all streams.): rtmp://b.rtmp.youtube.com/live2?backup=1" % (stream["snippet"]["title"],stream["id"], stream["cdn"]["ingestionInfo"]["streamName"])
+
+    list_streams_request = youtube.liveStreams().list_next(
+      list_streams_request, list_streams_response)
 
 if __name__ == "__main__":
 
