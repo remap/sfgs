@@ -215,6 +215,7 @@ class EditEvent(Event):
 	dstStartTimeKey = 'dst_start_time'
 	transKey = 'trans'
 	channelKey = 'channel'
+	startTimeOffset = 0
 
 	def __init__(self, jsonData):
 		super(EditEvent, self).__init__(jsonData)

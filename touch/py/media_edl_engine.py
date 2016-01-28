@@ -60,7 +60,7 @@ class PreloadOperation(VideoOperation):
 			') start time: '+str(self.event.videoStartTime.toSeconds()))
 		#self.ppController.url = self.url
 		self.ppController.videoUrl = self.event.videoUrl
-		self.ppController.startTime = self.event.videoStartTime.toSeconds()
+		self.ppController.startTime = self.event.videoStartTime.toSeconds()+self.event.startTimeOffset
 		self.ppController.pause = 1
 		self.ppController.blackout = 1
 
@@ -197,6 +197,11 @@ class VideoEdlEngine(object):
 		self.resMan.occupyResource(res)
 		hasVideoUrl = (event.videoUrl != 'none')
 
+		# this is the offset in seconds used to adjust video start time
+		# in order to start video playback earlier to avoid intercut blackouts
+		playbackOffset = -1
+		event.startTimeOffset = playbackOffset if event.videoStartTime.toSeconds() > 1 else -event.videoStartTime.toSeconds()
+		playbackOffset = event.startTimeOffset
 		t = 0
 
 		if hasVideoUrl:
@@ -205,10 +210,10 @@ class VideoEdlEngine(object):
 
 			# schedule playback start
 			t += self.startTime + event.clipStartTime.toSeconds()
-			# temporary workaround:
-			# schedule start playback operation 10ms earlier to avoid
+			# blinking workaround:
+			# schedule start playback operation 1s earlier to avoid
 			# blinking when switching b/w clips
-			self.timeline.scheduleOperations(t-0.01, [StartPlaybackOperation(res)])
+			self.timeline.scheduleOperations(t+playbackOffset, [StartPlaybackOperation(res)])
 			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch)])
 
 			# schedule playback stop
