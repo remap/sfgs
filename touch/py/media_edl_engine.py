@@ -156,6 +156,24 @@ class VideoEdlEngine(object):
 		self.timeline = me.mod.vars.mainTimeline
 		self.liveSwitch = me.mod.vars.streamSwitch
 		self.startTime = None
+		me.mod.vars.videoEdlEngine = self
+
+	def timeSinceStart(self):
+		delta = time.time() - self.startTime if not self.startTime == None else -1
+		if self.startTime == 0 or delta < 0:
+			return 0
+		else:
+			return delta
+
+	def clipTime(self):
+		timeSinceStart = self.timeSinceStart()
+		hr = int(timeSinceStart/3600)
+		timeSinceStart -= hr*3600
+		min = int(timeSinceStart/60)
+		timeSinceStart -= min*60
+		sec = int(timeSinceStart)
+		frac = int((timeSinceStart - sec)*100)
+		return "{:02}:{:02}:{:02}:{:02}".format(hr, min, sec, frac)
 
 	def run(self):
 		freeRes = self.resMan.getFreeResources()

@@ -19,6 +19,7 @@
 #	Author: Peter Gusev, peter@remap.ucla.edu
 
 import logging 
+import time
 
 logger = None
 
@@ -29,7 +30,15 @@ class EventDispatcher(object):
 	def onNewEvent(self, event):
 		global logger
 		logger.debug('new event received: '+str(event)+' queue len '+str(len(self.eventsQueue)))
+		self.addEventToDB(event)
 		self.eventsQueue.append(event)
+
+	def addEventToDB(self, event):
+		now = time.time()
+		dbDat = op('events_timeline')
+		if dbDat:
+			vals = [now, event.id, event.clipStartTime, event.clipEndTime, event.videoUrl]
+			dbDat.insertRow(vals, 1)
 
 	def popUpcomingEvent(self):
 		if len(self.eventsQueue) > 0:
