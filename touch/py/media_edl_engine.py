@@ -56,11 +56,12 @@ class PreloadOperation(VideoOperation):
 
 	def run(self, time):
 		global logger
+		startTime = self.event.videoStartTime.toSeconds()+self.event.startTimeOffset
 		logger.info(str(time)+' preload operation for '+str(self.ppController.compPath)+' ('+str(self.ppController.ytController.url)+\
-			') start time: '+str(self.event.videoStartTime.toSeconds()))
+			') start time: '+str(startTime))
 		#self.ppController.url = self.url
 		self.ppController.videoUrl = self.event.videoUrl
-		self.ppController.startTime = self.event.videoStartTime.toSeconds()+self.event.startTimeOffset
+		self.ppController.startTime = startTime
 		self.ppController.pause = 1
 		self.ppController.blackout = 1
 
@@ -107,10 +108,12 @@ class ReleaseResourceOperation(Operation):
 		self.resMan.freeResource(self.res)
 
 class SwitchLiveOperation(Operation):
-	def __init__(self, res, switch):
+	def __init__(self, res, switch, event=None, onSwitch=None):
 		self.res = res
 		self.switch = switch
 		self.priority = self.OperationPriorityTransit
+		self.event = event
+		self.onSwitchFunc = onSwitch		
 
 	def __str__(self):
 		return "switch live"
@@ -120,6 +123,8 @@ class SwitchLiveOperation(Operation):
 			logger.info(str(time)+ ' switching live to pipeline'+str(self.res.op.digits)+' ('+str(self.res.ytController.url)+')')
 			self.switch.blend = 0
 			self.switch.blendIn1 = (self.res.op.digits-1)
+			if self.onSwitchFunc and self.event:
+				self.onSwitchFunc(self.event)
 		else:
 			logger.warn('can\'t switch live: resource index larger than the number of available switch inputs')
 
@@ -184,8 +189,9 @@ class VideoEdlEngine(object):
 	def processEvent(self, event, res):
 		global logger
 		if isinstance(event, EndEvent):
-			logger.info('end event received: '+str(event))
-			self.timeline.scheduleOperations(self.clipMaxTime+2, [DispatchOperation(self.cleanupCurrentRun)])
+			if self.startTime:
+				logger.info('end event received: '+str(event))
+				self.timeline.scheduleOperations(self.clipMaxTime+2, [DispatchOperation(self.cleanupCurrentRun)])
 		else:
 			if event:
 				if event.id == 1 and self.startTime == None:
@@ -196,14 +202,6 @@ class VideoEdlEngine(object):
 					and (event.videoUrl != None): # and event.videoUrl != 'none'):
 						logger.debug('processing event '+str(event))
 						self.scheduleOnResource(event, res)
-					# if self.startTime == None and event.id != 1:
-					# 	logger.warn("event processing hasn't started (event #1 was never received)")
-					# else:
-					# 	logger.debug('event id is '+str(event.id))
-					# 	if event.id == 1:
-					# 		self.startTime = time.time()+self.preloadTime
-					# 		logger.debug('first event. start time is at '+str(self.startTime)+'('+str(self.startTime-time.time())+' seconds from now)')
-					# 	self.scheduleOnResource(event, res)
 
 	def cleanupCurrentRun(self):
 		logger.info('clip is over. cleaning up now...')
@@ -232,7 +230,7 @@ class VideoEdlEngine(object):
 			# schedule start playback operation 1s earlier to avoid
 			# blinking when switching b/w clips
 			self.timeline.scheduleOperations(t+playbackOffset, [StartPlaybackOperation(res)])
-			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch)])
+			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch, event, main.onStreamSwitched)])
 
 			# schedule playback stop
 			t += event.getClipDuration()
@@ -243,7 +241,7 @@ class VideoEdlEngine(object):
 		else: # treat as blackout
 			logger.debug('event has no video URL. treated as blackout.')
 			t += self.startTime + event.clipStartTime.toSeconds()
-			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch)])
+			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch, event, main.onStreamSwitched)])
 			self.timeline.scheduleOperations(t, [StopPlaybackOperation(res)])
 			self.timeline.scheduleOperations(t, [ReleaseResourceOperation(res, self.resMan)])
 		

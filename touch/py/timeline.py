@@ -56,6 +56,7 @@ class Timeline(object):
 			timePoints = sorted(self.operationsQueue)
 			while len(timePoints) > 0 and nowSec >= timePoints[0]:
 				t = timePoints[0]
+				logger.debug('executing operation'+str(nowSec-t)+' sec later')
 				operations = self.operationsQueue[t]
 				self.runOperations(operations)
 				del self.operationsQueue[t]

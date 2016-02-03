@@ -37,7 +37,8 @@ class EventDispatcher(object):
 		now = time.time()
 		dbDat = op('events_timeline')
 		if dbDat:
-			vals = [now, event.id, event.clipStartTime, event.clipEndTime, event.videoUrl]
+			channel = event.channel if hasattr(event, 'channel') else 'n/a'
+			vals = [now, event.id, channel, event.clipStartTime, event.clipEndTime, event.videoUrl]
 			dbDat.insertRow(vals, 1)
 
 	def popUpcomingEvent(self):

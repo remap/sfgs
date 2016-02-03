@@ -192,6 +192,9 @@ class Event(object):
 	def __repr__(self):
 		return self.__str__()
 
+	def shortStr(self):
+		return self.__str__()
+
 class EndEvent(Event):
 	srcUrlKey = 'src_url'
 	endToken = 'end'
@@ -205,6 +208,9 @@ class EndEvent(Event):
 	def __str__(self):
 		return "["+str(self.id)+" | end ]"
 
+	def shortStr(self):
+		return "["+str(self.id)+" | "+self.clipStartTime+" ]"
+
 class EditEvent(Event):
 	eventIdKey = 'event_id'
 	reelNameKey = 'reel_name'
@@ -216,6 +222,7 @@ class EditEvent(Event):
 	transKey = 'trans'
 	channelKey = 'channel'
 	startTimeOffset = 0
+	clipNameKey = 'clip_name'
 
 	def __init__(self, jsonData):
 		super(EditEvent, self).__init__(jsonData)
@@ -224,6 +231,7 @@ class EditEvent(Event):
 		self.videoUrl = jsonData[self.srcUrlKey]
 		self.clipStartTime = StreamTimestamp(jsonData[self.dstStartTimeKey])
 		self.clipEndTime = StreamTimestamp(jsonData[self.dstEndTimeKey])
+		if self.clipNameKey in jsonData.keys(): self.clipName = jsonData[self.clipNameKey]
 		if self.reelNameKey in jsonData.keys(): self.reelName = jsonData[self.reelNameKey]
 		if self.transKey in jsonData.keys(): self.trans = jsonData[self.transKey]
 		if self.channelKey in jsonData.keys(): self.channel = jsonData[self.channelKey]
@@ -234,6 +242,10 @@ class EditEvent(Event):
 		str(self.clipStartTime)+"-"+str(self.clipEndTime)+\
 		"("+"{0:.2f}".format(self.videoStartTime.toSeconds())+"-"+"{0:.2f}".format(self.videoEndTime.toSeconds())+"==>"+\
 		"{0:.2f}".format(self.clipStartTime.toSeconds())+"-"+"{0:.2f}".format(self.clipEndTime.toSeconds())+")"+"]"
+
+	def shortStr(self):
+		return "[" + str(self.id)+"-"+str(self.channel)+"|"+\
+		str(self.clipStartTime)+"-"+str(self.clipEndTime)+"]"
 
 	def getSrcDuration(self):
 		return self.videoEndTime.toSeconds()-self.videoStartTime.toSeconds()
