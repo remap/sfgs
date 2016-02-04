@@ -20,6 +20,7 @@
 
 import logging 
 import time
+import main
 
 logger = None
 
@@ -34,7 +35,7 @@ class EventDispatcher(object):
 		self.eventsQueue.append(event)
 
 	def addEventToDB(self, event):
-		now = time.time()
+		now = round(main.timeFunc()*100)/100
 		dbDat = op('events_timeline')
 		if dbDat:
 			channel = event.channel if hasattr(event, 'channel') else 'n/a'

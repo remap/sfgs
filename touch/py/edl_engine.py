@@ -112,7 +112,7 @@ class Pipeliner(DataFetcher):
 	def onData(self, interest, data):
 		global logger
 		logger.debug("incoming with name %r"%(data.getName().toUri()))
-		logger.debug("received data %r"%(data.getName().toUri()))
+		logger.info("received data %r"%(data.getName().toUri()))
 		seqNoComp = data.getName().get(-1).toEscapedString() 
 		if seqNoComp.isdigit():
 			seqNo = int(seqNoComp)
@@ -132,7 +132,7 @@ class Pipeliner(DataFetcher):
 
 #####################################################################
 class StreamTimestamp(object):
-	def __init__(self, timestampStr, framerate = 30):
+	def __init__(self, timestampStr, framerate = 23.976):
 		self.str = timestampStr
 		self.framerate = framerate
 		self.parseStr()
@@ -142,15 +142,15 @@ class StreamTimestamp(object):
 		if len(components) == 4:
 			for c in components:
 				if not c.isdigit():
-					raise InputError(self.str, "timestamp components should be numbers")
-			if int(components[3]) > self.framerate:
-				raise InputError(self.str, "frame number exceeds allowed framerate")
+					raise NameError(self.str, "timestamp components should be numbers")
+			if int(components[3]) > int(round(self.framerate)):
+				raise NameError(self.str, "frame number exceeds allowed framerate")
 			self.hour = int(components[0])
 			self.min = int(components[1])
 			self.sec = int(components[2])
 			self.frame = int(components[3])
 		else:
-			raise InputError(self.str, "number of timestamp components is not 4")
+			raise NameError(self.str, "number of timestamp components is not 4")
 
 	def toFrames(self):
 		frameTimestamp = self.frame
@@ -167,7 +167,12 @@ class StreamTimestamp(object):
 		return secondTimestamp
 
 	def __eq__(self, other):
+		if other is None or not isinstance(other, StreamTimestamp):
+			return False
 		return self.toFrames() == other.toFrames()
+
+	def __le__(self, other):
+		return self.toFrames() <= other.toFrames()
 
 	def __lt__(self, other):
 		return self.toFrames() < other.toFrames() 
@@ -179,21 +184,63 @@ class StreamTimestamp(object):
 		return self.__str__()
 
 #####################################################################
-class Event(object):
-	eventIdKey = 'event_id'
+class EventBase(object):
+	def __init__(self):
+		self.id = 0
+		self.videoStartTime = StreamTimestamp("00:00:00:00")
+		self.videoEndTime = StreamTimestamp("00:00:00:00")
+		self.clipStartTime = StreamTimestamp("00:00:00:00")
+		self.clipEndTime = StreamTimestamp("00:00:00:00")
+		self.videoUrl = 'none'
+		self.clipName = 'none'
+		self.reelName = 'none'
+		self.trans = 'none'
+		self.channel = 'none'
+		self.startTimeOffset = 0
+		self.res = None
 
-	def __init__(self, jsonData):
-		self.jsonData = jsonData
-		self.id = int(jsonData[self.eventIdKey])
+	def getSrcDuration(self):
+		return self.videoEndTime.toSeconds()-self.videoStartTime.toSeconds()
+
+	def getClipDuration(self):
+		return self.clipEndTime.toSeconds()-self.clipStartTime.toSeconds()
 
 	def __str__(self):
-		return "["+str(seld.id)+"| empty ]"
+		return "["+str(self.id)+"| empty ]"
 
 	def __repr__(self):
 		return self.__str__()
 
 	def shortStr(self):
 		return self.__str__()
+
+class DummyEvent(EventBase):
+	def __init__(self, startTimestampStr, endTimestampStr):
+		self.id = -1
+		self.videoStartTime = StreamTimestamp("00:00:00:00")
+		self.videoEndTime = StreamTimestamp("00:00:00:00")
+		self.clipStartTime = StreamTimestamp(startTimestampStr)
+		self.clipEndTime = StreamTimestamp(endTimestampStr)
+		self.videoUrl = 'none'
+		self.clipName = 'none'
+		self.reelName = 'none'
+		self.trans = 'none'
+		self.channel = 'none'
+		self.startTimeOffset = 0
+		self.res = None
+		self.releaseTime = 0
+
+	def __str__(self):
+		return "[DUMM| "+str(self.clipStartTime)+"-"+str(self.clipEndTime)+"]"
+
+
+class Event(EventBase):
+	eventIdKey = 'event_id'
+
+	def __init__(self, jsonData):
+		super(Event, self).__init__()
+		self.jsonData = jsonData
+		self.id = int(jsonData[self.eventIdKey])
 
 class EndEvent(Event):
 	srcUrlKey = 'src_url'
@@ -247,12 +294,6 @@ class EditEvent(Event):
 		return "[" + str(self.id)+"-"+str(self.channel)+"|"+\
 		str(self.clipStartTime)+"-"+str(self.clipEndTime)+"]"
 
-	def getSrcDuration(self):
-		return self.videoEndTime.toSeconds()-self.videoStartTime.toSeconds()
-
-	def getClipDuration(self):
-		return self.clipEndTime.toSeconds()-self.clipStartTime.toSeconds()
-
 #####################################################################
 class EventPoller(Pipeliner):
 	def __init__(self, face, ndnPath, onNewEvent):
@@ -266,18 +307,18 @@ class EventPoller(Pipeliner):
 			eventData = json.loads(str(data))
 			logger.debug('parsed event data: %r'%eventData)
 		except Exception as e:
-			logger.warning('error parsing json data (%r): %r'%(str(data), e))
+			logger.error('error parsing json data (%r): %r'%(str(data), e))
 		event = None
 		try:
 			event = EditEvent(eventData)
 		except Exception as e:
-			logger.warning('error creating EditEvent: %r, trying EndEvent...'%(e))
+			logger.error('error creating EditEvent (%r) from data: %r, trying EndEvent...'%(e, str(eventData)))
 		if event == None:
 			try:
 				event = EndEvent(eventData)
 				logger.info('end event created '+str(event))
 			except Exception as e:
-				logger.warning('error creating EndEvent: %r\ndata: %r'%(e, eventData))
+				logger.error('error creating EndEvent: %r\ndata: %r'%(e, eventData))
 		if event != None:
 			self.onNewEvent(event)
 

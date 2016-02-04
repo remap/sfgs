@@ -19,6 +19,7 @@
 #	Author: Peter Gusev, peter@remap.ucla.edu
 
 import time
+import main
 from collections import OrderedDict
 
 logger = None
@@ -32,7 +33,7 @@ class Timeline(object):
 
 	def scheduleOperations(self, absTimeSec, operations):
 		global logger
-		now = time.time()
+		now = main.timeFunc()
 		logger.debug('for '+str(absTimeSec)+' ('+str(absTimeSec-now)+' sec from now) scheduled ops: '+str(operations))
 		if (absTimeSec in self.operationsQueue.keys()):
 			self.operationsQueue[absTimeSec].extend(operations)
@@ -41,18 +42,22 @@ class Timeline(object):
 
 	def scheduleOperationFromNow(self, seconds, operation):
 		global logger
-		nowSec = time.time()
+		nowSec = main.timeFunc()
 		self.scheduleOperations(nowSec+seconds, [operation])
 		return nowSec
+
+	def removeOperations(self, absTimeSec):
+		if absTimeSec in self.operationsQueue.keys():
+			del self.operationsQueue[absTimeSec]
 
 	def runOperations(self, operations):
 		operationsByPriority = sorted(operations, key=lambda o: o.priority, reverse=False)
 		for o in operationsByPriority:
-			o.run(time.time())
+			o.run(main.timeFunc())
 
 	def run(self):
 		if len(self.operationsQueue) > 0:
-			nowSec = time.time()
+			nowSec = main.timeFunc()
 			timePoints = sorted(self.operationsQueue)
 			while len(timePoints) > 0 and nowSec >= timePoints[0]:
 				t = timePoints[0]
