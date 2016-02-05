@@ -54,7 +54,7 @@ class PreloadOperation(VideoOperation):
 
 	def __str__(self):
 		startTime = self.event.videoStartTime.toSeconds()+self.event.startTimeOffset
-		return "preload\t" + self.event.shortStr() + '\t' + str(startTime) + '\t' +str(self.event.ytUrl)
+		return "preload, " + self.event.shortStr() + ', ' + str(startTime) + ', ' +str(self.event.ytUrl)
 
 	def run(self, time):
 		global logger
@@ -73,7 +73,7 @@ class StartPlaybackOperation(VideoOperation):
 		self.priority = self.OperationPriorityInitiate
 
 	def __str__(self):
-		return "start playback\t" + self.event.shortStr()
+		return "start playback, " + self.event.shortStr()
 
 	def run(self, time):
 		global logger
@@ -87,7 +87,7 @@ class StopPlaybackOperation(VideoOperation):
 		self.priority = self.OperationPriorityFinalize
 
 	def __str__(self):
-		return "stop playback\t" + self.event.shortStr()
+		return "stop playback, " + self.event.shortStr()
 
 	def run(self, time):
 		global logger
@@ -104,7 +104,8 @@ class ReleaseResourceOperation(Operation):
 		self.priority = self.OperationPriorityFinalize
 
 	def __str__(self):
-		return "release resource\t"+self.event.shortStr()+'\t'+str(self.res.compPath)
+		return "release resource, "+self.event.shortStr()+', '+str(self.res.compPath)
+
 	def run(self, time):
 		logger.info(str(time)+' release resource '+str(self.res.compPath)+' ('+str(self.res.ytController.url)+')')
 		self.resMan.freeResource(self.res)
@@ -119,7 +120,7 @@ class SwitchLiveOperation(Operation):
 		self.onSwitchFunc = onSwitch
 
 	def __str__(self):
-		return "switch live\t"+self.event.shortStr()+'\t'+str(self.res.compPath)
+		return "switch live, "+self.event.shortStr()+', '+str(self.res.compPath)
 
 	def run(self, time):
 		if self.res.op.digits <= self.switch.nInputs:
@@ -137,7 +138,7 @@ class BlackoutOperation(VideoOperation):
 		self.priority = self.OperationPriorityInitiate
 
 	def __str__(self):
-		return "blackout\t"+self.event.shortStr()
+		return "blackout, "+self.event.shortStr()
 
 	def run(self, time):
 		global logger
@@ -151,7 +152,7 @@ class CheckUpcomingEvent(Operation):
 		self.priority = self.OperationPriorityLowest
 
 	def __str__(self):
-		return "check upcoming\t"+self.event.shortStr()
+		return "check upcoming, "+self.event.shortStr()
 
 	def run(self, time):
 		global logger
