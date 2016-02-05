@@ -53,7 +53,9 @@ class Timeline(object):
 	def runOperations(self, operations):
 		operationsByPriority = sorted(operations, key=lambda o: o.priority, reverse=False)
 		for o in operationsByPriority:
-			o.run(main.timeFunc())
+			time = main.timeFunc()
+			o.run(time)
+			main.onOperationExecuted(time, o)
 
 	def run(self):
 		if len(self.operationsQueue) > 0:

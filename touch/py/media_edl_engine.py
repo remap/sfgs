@@ -39,21 +39,22 @@ class DispatchOperation(Operation):
 		self.func()
 
 class VideoOperation(Operation):
-	def __init__(self, ppController):
+	def __init__(self, event, ppController):
 		self.priority = self.OperationPriorityHighest
 		self.ppController = ppController
+		self.event = event
 
 	def run(self):
 		pass
 
 class PreloadOperation(VideoOperation):
 	def __init__(self, event, ppController):
-		super(PreloadOperation,self).__init__(ppController)
+		super(PreloadOperation,self).__init__(event, ppController)
 		self.priority = self.OperationPriorityInitiate
-		self.event = event
 
 	def __str__(self):
-		return "preload"
+		startTime = self.event.videoStartTime.toSeconds()+self.event.startTimeOffset
+		return "preload\t" + self.event.shortStr() + '\t' + str(startTime) + '\t' +str(self.event.ytUrl)
 
 	def run(self, time):
 		global logger
@@ -67,12 +68,12 @@ class PreloadOperation(VideoOperation):
 		self.ppController.blackout = 1
 
 class StartPlaybackOperation(VideoOperation):
-	def __init__(self, ppController):
-		super(StartPlaybackOperation, self).__init__(ppController)
+	def __init__(self, event, ppController):
+		super(StartPlaybackOperation, self).__init__(event, ppController)
 		self.priority = self.OperationPriorityInitiate
 
 	def __str__(self):
-		return "start playback"
+		return "start playback\t" + self.event.shortStr()
 
 	def run(self, time):
 		global logger
@@ -81,12 +82,12 @@ class StartPlaybackOperation(VideoOperation):
 		self.ppController.blackout = 0
 
 class StopPlaybackOperation(VideoOperation):
-	def __init__(self, ppController):
-		super(StopPlaybackOperation, self).__init__(ppController)
+	def __init__(self, event, ppController):
+		super(StopPlaybackOperation, self).__init__(event, ppController)
 		self.priority = self.OperationPriorityFinalize
 
 	def __str__(self):
-		return "stop playback"
+		return "stop playback\t" + self.event.shortStr()
 
 	def run(self, time):
 		global logger
@@ -103,8 +104,7 @@ class ReleaseResourceOperation(Operation):
 		self.priority = self.OperationPriorityFinalize
 
 	def __str__(self):
-		return "release resource"
-
+		return "release resource\t"+self.event.shortStr()+'\t'+str(self.res.compPath)
 	def run(self, time):
 		logger.info(str(time)+' release resource '+str(self.res.compPath)+' ('+str(self.res.ytController.url)+')')
 		self.resMan.freeResource(self.res)
@@ -119,7 +119,7 @@ class SwitchLiveOperation(Operation):
 		self.onSwitchFunc = onSwitch
 
 	def __str__(self):
-		return "switch live"
+		return "switch live\t"+self.event.shortStr()+'\t'+str(self.res.compPath)
 
 	def run(self, time):
 		if self.res.op.digits <= self.switch.nInputs:
@@ -132,12 +132,12 @@ class SwitchLiveOperation(Operation):
 			logger.warning('can\'t switch live: resource index larger than the number of available switch inputs')
 
 class BlackoutOperation(VideoOperation):
-	def __init__(self, ppController):
-		super(BlackoutOperation,self).__init__(ppController)
+	def __init__(self, event, ppController):
+		super(BlackoutOperation,self).__init__(event, ppController)
 		self.priority = self.OperationPriorityInitiate
 
 	def __str__(self):
-		return "blackout"
+		return "blackout\t"+self.event.shortStr()
 
 	def run(self, time):
 		global logger
@@ -151,7 +151,7 @@ class CheckUpcomingEvent(Operation):
 		self.priority = self.OperationPriorityLowest
 
 	def __str__(self):
-		return "check upcoming"
+		return "check upcoming\t"+self.event.shortStr()
 
 	def run(self, time):
 		global logger
@@ -212,7 +212,7 @@ class VideoEdlEngine(object):
 		timeSinceStart -= min*60
 		sec = int(timeSinceStart)
 		frac = int((timeSinceStart - sec)*100)
-		return "{:02}:{:02}:{:02}:{:02}".format(hr, min, sec, frac)
+		return "{:02}:{:02}:{:02}.{:02}".format(hr, min, sec, frac)
 
 	def run(self):
 		freeRes = self.resMan.getFreeResources()
@@ -332,7 +332,7 @@ class VideoEdlEngine(object):
 			# blinking workaround:
 			# schedule start playback operation 1s earlier to avoid
 			# blinking when switching b/w clips
-			self.timeline.scheduleOperations(t+playbackOffset, [StartPlaybackOperation(res)])
+			self.timeline.scheduleOperations(t+playbackOffset, [StartPlaybackOperation(event, res)])
 			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch, event, main.onStreamSwitched)])
 
 			# check if the last event was a dummy and release it's resource if it was
@@ -344,14 +344,14 @@ class VideoEdlEngine(object):
 
 			# schedule playback stop - StopPlaybackOperation
 			t += event.getClipDuration()
-			self.timeline.scheduleOperations(t, [StopPlaybackOperation(res)])
+			self.timeline.scheduleOperations(t, [StopPlaybackOperation(event, res)])
 
 			# schedule resource release
 			self.timeline.scheduleOperations(t, [ReleaseResourceOperation(event, res, self.resMan)])
 		else: # treat as blackout
 			t += event.clipStartTime.toSeconds()
 			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch, event, main.onStreamSwitched),\
-				StopPlaybackOperation(res)])
+				StopPlaybackOperation(event, res)])
 			t += event.getClipDuration()
 			self.timeline.scheduleOperations(t, [ReleaseResourceOperation(event, res, self.resMan)])
 

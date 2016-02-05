@@ -192,10 +192,12 @@ class EventBase(object):
 		self.clipStartTime = StreamTimestamp("00:00:00:00")
 		self.clipEndTime = StreamTimestamp("00:00:00:00")
 		self.videoUrl = 'none'
+		self.ytUrl = 'none'
 		self.clipName = 'none'
 		self.reelName = 'none'
 		self.trans = 'none'
 		self.channel = 'none'
+		self.videoFramerate = 23.976
 		self.startTimeOffset = 0
 		self.res = None
 
@@ -222,10 +224,12 @@ class DummyEvent(EventBase):
 		self.clipStartTime = StreamTimestamp(startTimestampStr)
 		self.clipEndTime = StreamTimestamp(endTimestampStr)
 		self.videoUrl = 'none'
+		self.ytUrl = 'none'
 		self.clipName = 'none'
 		self.reelName = 'none'
 		self.trans = 'none'
 		self.channel = 'none'
+		self.videoFramerate = 23.976
 		self.startTimeOffset = 0
 		self.res = None
 		self.releaseTime = 0
@@ -270,14 +274,19 @@ class EditEvent(Event):
 	channelKey = 'channel'
 	startTimeOffset = 0
 	clipNameKey = 'clip_name'
+	framerateKey = 'frame_rate'
+	ytUrlKey = 'ori_url'
 
 	def __init__(self, jsonData):
 		super(EditEvent, self).__init__(jsonData)
-		self.videoStartTime = StreamTimestamp(jsonData[self.srcStartTimeKey])
-		self.videoEndTime = StreamTimestamp(jsonData[self.srcEndTimeKey])
 		self.videoUrl = jsonData[self.srcUrlKey]
-		self.clipStartTime = StreamTimestamp(jsonData[self.dstStartTimeKey])
-		self.clipEndTime = StreamTimestamp(jsonData[self.dstEndTimeKey])
+		if jsonData[self.framerateKey] != 'none':
+			self.videoFramerate = float(jsonData[self.framerateKey])
+		self.videoStartTime = StreamTimestamp(jsonData[self.srcStartTimeKey], framerate = self.videoFramerate)
+		self.videoEndTime = StreamTimestamp(jsonData[self.srcEndTimeKey], framerate = self.videoFramerate)
+		self.clipStartTime = StreamTimestamp(jsonData[self.dstStartTimeKey], framerate = self.videoFramerate)
+		self.clipEndTime = StreamTimestamp(jsonData[self.dstEndTimeKey], framerate = self.videoFramerate)
+		if self.ytUrlKey in jsonData.keys(): self.ytUrl = jsonData[self.ytUrlKey]
 		if self.clipNameKey in jsonData.keys(): self.clipName = jsonData[self.clipNameKey]
 		if self.reelNameKey in jsonData.keys(): self.reelName = jsonData[self.reelNameKey]
 		if self.transKey in jsonData.keys(): self.trans = jsonData[self.transKey]
@@ -292,6 +301,7 @@ class EditEvent(Event):
 
 	def shortStr(self):
 		return "[" + str(self.id)+"-"+str(self.channel)+"|"+\
+		str(self.videoStartTime)+"-"+str(self.videoEndTime)+"==>"+\
 		str(self.clipStartTime)+"-"+str(self.clipEndTime)+"]"
 
 #####################################################################
