@@ -254,7 +254,7 @@ class EndEvent(Event):
 		super(EndEvent, self).__init__(jsonData)
 		if jsonData[self.srcUrlKey] != self.endToken:
 			raise Exception('bad format', 'end event is not formatted correctly')
-		self.clipStartTime = StreamTimestamp('23:59:59:29')
+		self.clipStartTime = StreamTimestamp('23:59:59:0')
 
 	def __str__(self):
 		return "["+str(self.id)+" | end ]"
