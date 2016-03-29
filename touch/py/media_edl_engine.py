@@ -213,7 +213,7 @@ class VideoEdlEngine(object):
 		timeSinceStart -= min*60
 		sec = int(timeSinceStart)
 		frac = int((timeSinceStart - sec)*100)
-		return "{:02}:{:02}:{:02}.{:02}".format(hr, min, sec, frac)
+		return "{:02}:{:02}:{:02}.{:02} ({:.3f})".format(hr, min, sec, frac, main.timeFunc())
 
 	def run(self):
 		freeRes = self.resMan.getFreeResources()
