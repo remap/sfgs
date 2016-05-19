@@ -6,6 +6,22 @@ Flask backend on www.searchforglobalsong.com port 25000 (128.97.98.11:25000).
 
 Tail log visualizer on http://128.97.98.11:25000/tail_log
 
+To interact, please use POST http://128.97.98.11:25000/log/insert with one of the interfaces below.
+
+* Logging interfaces (http post):
+
+  * Python logging: <a href="https://github.com/remap/sfgs/blob/master/logging/test.py">example code</a>.
+Can run with
+<pre>
+python test.py --server=128.97.98.11:25000 --url=/log/insert --name=zhehao --msg="log log!"
+</pre>
+In the code, can specify extra fields in each log message; <a href="https://github.com/remap/sfgs/blob/master/logging/test.py#L64">Example line</a>.
+  * JSON logging, try in terminal: 
+<pre>
+curl -H "Content-type:application/json" --data @test.json http://128.97.98.11:25000/log/insert
+</pre>
+where test.json is the log entry; <a href="https://github.com/remap/sfgs/blob/master/logging/test.json">example</a>.
+
 * Logging schema
 
 <pre>
@@ -24,19 +40,18 @@ CREATE TABLE IF NOT EXISTS log (
 ) with clustering order by (event_id ASC);
 </pre>
 
-* Logging interfaces:
+* File structure
 
-** Python logging: <a href="https://github.com/remap/sfgs/blob/master/logging/test.py">example code</a>
+	-  **log.py**  // _flask executable_
+	-  **test.py**   // _an example python script that logs a given message with options_
+	-  **test.json** // _an example log message in JSON, can be used for cmdline testing_
+	-  schema.cql    // _backup of the current Cassandra DB schema_
+	-  static/tail_log.html // _simple tail log visualizer_
 
-Can run with
-<pre>
-python test.py --server=128.97.98.11:25000 --url=/log/insert --name=zhehao --msg=log!
-</pre>
+* Tail log visualizer:
 
-In the code, can specify extra fields in each log message, 
+Posts an xmlhttp request to the backend every second and ask for new log entries for each module.
 
-** JSON logging, try in terminal: 
-<pre>
-curl -H "Content-type:application/json" --data @test.json http://128.97.98.11:25000/log/insert
-</pre>
-where test.json is the log entry <a href="https://github.com/remap/sfgs/blob/master/logging/test.json">example</a>.
+Dump the log entry as soon as received.
+
+(For quick prototyping, currently has cors headers unrestricted! And DB interface completely exposed! Hope no one finds out the url, as in Los Atlantis.)
