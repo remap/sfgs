@@ -1,0 +1,134 @@
+<head>
+<script>
+  var Utility = function Utility(hostUrl) {
+    this.hostUrl = hostUrl;
+    if (hostUrl == undefined) {
+      this.hostUrl = 'http://localhost:5000';
+    }
+    
+    this.getFirstTransferUrl = this.hostUrl + '/querydb/get-first-transfer';
+    this.genericQueryUrl = this.hostUrl + '/query';
+  };
+
+  // TODO: This function should 
+  //   1. occur in only one js file referenced somewhere 
+  //   2. ask for specific url for specific query so that access over database is limited on client side
+  // param @encoding, the result encoding for session.execute used by the backend; supported json, pickle, and str
+  Utility.prototype.postToDB = function (queryStr, successCallback, encoding) {
+    var data = new FormData();
+    data.append('query', queryStr);
+    
+    if (encoding === undefined) {
+      encoding = 'json';
+    }
+    data.append('encoding', encoding);
+    
+    var xhr = new XMLHttpRequest();
+    //xhr.open('POST', 'http://archive-dev.remap.ucla.edu/app/query', true);
+    xhr.open('POST', this.genericQueryUrl, true);
+    xhr.onload = function () {
+      successCallback(this.responseText);
+    };
+    xhr.send(data); 
+  };
+
+  var UI = {};
+  
+  // eventNames maps 'event_name' to time of last event in that name
+  var eventNames = {};
+  
+  var divIdPrepend = 'log';
+  var utility = new Utility('http://128.97.98.11:25000');
+  //var utility = new Utility('http://127.0.0.1:5000');
+  
+  function nameQueryCallback(responseText) {
+    var namesObject = JSON.parse(responseText);
+    var containerElement = document.getElementById('container');
+    for (var i = 0; i < namesObject.length; i++) {
+      //console.log(namesObject[i][0]);
+      // html object manipulation
+      if (document.getElementById(divIdPrepend + namesObject[i]["module"]) === null) {
+        var obj = document.createElement('div');
+        obj.id = divIdPrepend + namesObject[i]["module"];
+        obj.innerHTML += '<h3>Event: ' + namesObject[i]["module"] + '</h3>'
+        containerElement.appendChild(obj);
+      }
+      
+      // running log via periodic AJAX calls
+      eventNames[namesObject[i]["module"]] = {lastTime: 0};
+      trackEventName(namesObject[i]["module"], 1000);
+    }
+  }
+  
+  function trackEventName(eventName, interval) {
+    // TODO: This frontend query string should be moved to backend.
+    var queryStr = 'select unixTimestampOf(event_id), module, log, user from log where module = \'' + eventName + '\'';
+    if (eventNames[eventName].lastTime !== undefined && eventNames[eventName].lastTime !== 0) {
+      queryStr += ' and event_id > maxTimeuuid(' + eventNames[eventName].lastTime + ')';
+    }
+    //console.log(queryStr);
+    utility.postToDB(queryStr, function (responseText) {
+      //console.log(responseText);
+      
+      //var resultObj = pickle.loads(responseText);
+      var resultObj = JSON.parse(responseText);
+      
+      if (resultObj.length > 0) {
+        eventNames[eventName].lastTime = resultObj[resultObj.length - 1]["unixTimestampOf_event_id"];
+      
+        // html object manipulation
+        var element = document.getElementById(divIdPrepend + eventName);
+        if (element !== null) {
+          for (var i = 0; i < resultObj.length; i++) {
+            //element.innerHTML += pickle.dumps(resultObj[i]) + '<br>';
+            element.innerHTML += JSON.stringify(resultObj[i]) + '<br>';
+            
+            try {
+              var paramsObj = JSON.parse(resultObj[i][2]);
+              var participantsObj = JSON.parse(resultObj[i][3]);
+              if (SpecialChatServer.hasOwnProperty(eventName)) {
+                SpecialChatServer[eventName](paramsObj, participantsObj);
+              }
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        }
+      }
+      if (UI.tailing) {
+        setTimeout(function() {
+          trackEventName(eventName, interval);
+        }, interval);
+      }
+    }, 'json');
+  }
+  
+  UI.tailing = false;
+  
+  UI.startTailing = function () {
+    if (!UI.tailing) {
+      var nameQueryStr = 'select distinct module from log';
+      utility.postToDB(nameQueryStr, nameQueryCallback, 'json');
+      document.getElementById('tail-button').textContent = 'Stop tailing';
+      UI.tailing = true;
+    } else {
+      document.getElementById('tail-button').textContent = 'Start tailing';
+      UI.tailing = false;
+    }
+  }
+</script>
+</head>
+
+<body>
+Tail log test page.
+<br><br>
+<input id="tail-show-id" type="text" value="performance-1"></input>
+<br><br>
+<button id="tail-button" onclick="UI.startTailing()">Start tailing</button>
+<br><br>
+<br><br>
+<div id="container">
+</div>
+<div id="participants">
+</div>
+</body>

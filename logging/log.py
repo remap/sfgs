@@ -23,7 +23,7 @@ from cassandra.query import SimpleStatement
 import cassandra.util
 
 # To test JSON:
-# curl -H "Content-type:application/json" --data @test.json http://localhost:5000/insert
+# curl -H "Content-type:application/json" --data @test.json http://localhost:5000/log/insert
 
 '''
 Python logging level definitions:
@@ -47,14 +47,25 @@ app.config.update(
   KEYSPACE_NAME = 's4gs',
 )
 
+# Add cors headers for query passing
+def add_cors_headers(response):
+    # Allow any origin for the simple test 
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Methods'] = 'HEAD, GET, POST, PATCH, PUT, OPTIONS, DELETE'
+    response.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept'
+    return response
+
+app.after_request(add_cors_headers)
+
 cluster = Cluster(
   contact_points = [app.config['DATABASE_URI']],
 )
 
 db_session = cluster.connect(app.config['KEYSPACE_NAME'])
 
-@app.route('/insert', methods=['POST', 'GET'])
-def query():
+@app.route('/log/insert', methods=['POST', 'GET'])
+def insert():
   if request.method == 'POST':
     data = None
     if request.headers['Content-Type'] == 'application/x-www-form-urlencoded':
@@ -133,20 +144,20 @@ def query():
     elif request.headers['Content-Type'] == 'application/json':
       try:
         data = request.json
-        if 'log' not in data or 'module' not in data or 'time' not in result:
+        if 'log' not in data or 'module' not in data or 'time' not in data:
           print "Mandatory field missing: (module, time, log)"
           return "Mandatory field missing: (module, time, log)"
-        if 'level' not in result:
+        if 'level' not in data:
           data['level'] = 10
-        if 'user' not in result:
+        if 'user' not in data:
           data['user'] = ''
-        if 'module' not in result:
+        if 'module' not in data:
           data['module'] = ''
-        if 'associated_object' not in result:
+        if 'associated_object' not in data:
           data['associated_object'] = ''
-        if 'host' not in result:
+        if 'host' not in data:
           data['host'] = ''
-        if 'pid' not in result:
+        if 'pid' not in data:
           data['pid'] = 0
       except AttributeError as e:
         print(str(e))
@@ -167,5 +178,72 @@ def query():
 
     return "{\'status\': \'200\'}"
 
+def json_handler(obj):
+  resultStr = '{}'
+  try:
+    if (type(obj) is datetime.datetime):
+      if hasattr(obj, 'isoformat'):
+        # When we query from Cassandra, timestamp is always returned in UTC
+        time = pytz.timezone('UTC').localize(obj).strftime('%Y-%m-%dT%H:%M:%SZ')
+        return time
+      else:
+        print('datetime does not have isoformat')
+        return 
+    # This works for earlier versions of Cassandra Python binding (2.1.4)
+    elif (type(obj) is cassandra.util.OrderedMap):
+      tempDict = dict()
+      # The problem here, is that obj.keys() is not hashable
+      tempDict[str(obj.keys())] = obj.values()
+      return json.dumps(tempDict)
+    # This works for earlier versions of Cassandra Python binding (2.5.1)
+    elif (type(obj) is cassandra.util.OrderedMapSerializedKey):
+      tempDict = dict()
+      # The problem here, is that obj.keys() is not hashable
+      # Here we downgrade an OrderedMap to a json key-value pair; only first item in the key is taken care of.
+      
+      # TODO: check if this breaks anything...
+      if (len(obj.keys()) > 0):
+        for key in obj.keys():
+          tempDict[str(key)] = obj[key]
+      return json.dumps(tempDict)
+    else: 
+        resultStr = json.dumps(list(obj))
+  except BaseException as e:
+      print('Query result object may not be listable; type ' + str(type(obj)))
+      print(str(e))
+  return resultStr
+
+@app.route('/query', methods=['POST', 'GET'])
+def query():
+  if request.method == 'POST':
+    queryStr = request.form['query']
+    if 'encoding' in request.form:
+      resultEncoding = request.form['encoding']
+    else:
+      resultEncoding = 'json'
+
+    try:
+      # Note: json.dumps does not know how to handle timeuuid directly, nor does it seem to know how to handle set...
+      if resultEncoding == 'json':
+        result = json.dumps(db_session.execute(queryStr), default = json_handler)
+      elif resultEncoding == 'pickle':
+        # TODO: experimental pickle does not work yet...
+        from cassandra.query import tuple_factory
+        db_session.row_factory = tuple_factory
+        result = pickle.dumps(db_session.execute(queryStr))
+      else:
+        result = str(db_session.execute(queryStr))
+      return result
+    except AttributeError as e:
+      print(str(e))
+      return "AttributeError:" + str(e)
+    except BaseException as e:
+      print(str(e))
+      return "Unexpected error:" + str(e)
+
+@app.route('/tail_log')
+def tail_log():
+  return redirect(url_for('static', filename='tail_log.html'))
+
 if __name__ == '__main__':
-  app.run()
+  app.run(host='0.0.0.0',port=25000)
