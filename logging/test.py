@@ -61,7 +61,7 @@ if __name__ == "__main__":
   logger1 = logging.getLogger(username)
   #logger2 = logging.getLogger('myapp.area2')
 
-  d = {'host': '192.168.0.1', 'user': username}
+  d = {'host': '192.168.0.1', 'user': username, 'associated_object': '{\"character\": \"zhehao\"}'}
 
   logger1.debug(msg, extra=d)
   #logger1.info('How quickly daft jumping zebras vex.')

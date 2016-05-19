@@ -126,7 +126,7 @@ def insert():
         else:
           data['associated_object'] = ''
 
-        if request.form.get('associated_object'):
+        if request.form.get('host'):
           data['host'] = request.form.get('host')
         else:
           data['host'] = ''
