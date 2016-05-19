@@ -1,0 +1,10 @@
+{
+	"time"             : 1463692430000,
+  "level"            : 30,
+  "user"             : "zhehao",
+  "module"           : "debug-logging",
+  "log"              : "test log",
+  "associated_object": "",
+  "host"             : "localhost",
+  "pid"              : 5000
+}
