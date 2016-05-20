@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS log (
 
 * Tail log visualizer:
 
+Click "start tailing" (sometimes need to refresh once; seems to be a Flask thing we ran into earlier, checking)
+
 Posts an xmlhttp request to the backend every second and ask for new log entries for each module.
 
 Dump the log entry as soon as received.
