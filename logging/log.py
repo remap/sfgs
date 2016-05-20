@@ -240,6 +240,8 @@ def query():
     except BaseException as e:
       print(str(e))
       return "Unexpected error:" + str(e)
+  if request.method == 'GET':
+    return "Please do POST with <a href=\"https://github.com/remap/sfgs/tree/master/logging\">expected params</a> to work with this page!<br>"
 
 @app.route('/tail_log')
 def tail_log():
