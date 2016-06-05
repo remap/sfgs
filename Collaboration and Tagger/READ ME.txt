@@ -1,0 +1,2 @@
+.txt files in current directory are code for wordpress pages.
+

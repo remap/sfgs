@@ -1,0 +1,182 @@
+<link rel="stylesheet" type="text/css" href="../custom-code/collab.css">
+[insert_php]
+
+require_once('custom-code/lib/autoload.php');
+use phpcassa\Connection\ConnectionPool;
+use phpcassa\ColumnFamily;
+use phpcassa\SystemManager;
+use phpcassa\Schema\StrategyClass;
+use phpcassa\ColumnSlice;
+// Create a  new keyspace and column family
+	$sys = new SystemManager('127.0.0.1');
+	// Start a connection pool, create our ColumnFamily instance
+	$pool = new ConnectionPool('s4gs', array('127.0.0.1'));	
+	$collab_user = new ColumnFamily($pool, 'users');
+	$wp_user = new ColumnFamily($pool, 'wp_emails');
+	
+
+	
+if(isset($_GET['action']))
+{
+ 	$action=$_GET['action'];
+ 	$status=$_GET['status'];
+	$email=$_GET['email'];
+   	if($status!='Approved' && $status!='Applied')
+		$status='Denied';
+		
+	switch ($action)
+		{
+			case 'changeStatus':
+                if(($collab_user->get_count($email))>0)
+                {
+                    $collab_user->insert($email, array('status' => $status));
+                    $message= 'Status for '.$email.' changed to '.$status.'.';
+                    if($status=='Approved')
+                    {
+                        $current_user=$collab_user->get($email);
+                             $mail_content='				
+				<div>
+					<p>Hello '.$current_user['first_name'].',</p>
+					<p>Thank you for registering to make your own version of Search for Global Song!</p>
+					<p>Below are the interfaces for your <strong>'.$current_user['location'].'</strong> channel:</p>
+					<p>	G+ Page: '.$current_user['url_gplus'].'<br />
+						Google Drive: '.$current_user['gdrive'].'<br />
+						YouTube Channel: '.$current_user['url_yt'].'</p>
+					<p>Please see the <a href="http://searchforglobalsong.com/author/workflow/?">Workflow</a> page for more detailed instructions on how to begin shooting, editing and uploading your version!</p>
+					<p>Best,</p>
+					<p>The Search for Global Song Team</p>
+				</div>
+
+				';
+				
+				
+				$to = $email;
+				$subject = 'Account Approved - Search for Global Song';
+				
+					
+				$headers = 'From: no-reply@remap.ucla.edu'. "\r\n";
+                                $headers .= 'Cc: jeff@remap.ucla.edu, jared@remap.ucla.edu, zoe@remap.ucla.edu' . "\r\n";
+				$headers .= "MIME-Version: 1.0\r\n";
+				$headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
+
+
+				// Can do no-reply@remap.ucla.edu, or the-archive@remap.ucla.edu
+				// Can't do without -f specification
+				
+				if (mail($to,$subject,$mail_content,$headers)) 
+				{
+					$email_msg=' Email sent to '.$to;
+				} 
+				else 
+				{
+					$email_msg=' Email sending failed to '.$to;
+				}
+                    }
+                }
+                else
+                {
+                     $message= 'No user found with this email';
+                }
+                break;
+            default:
+                 $message= 'Action not supported';
+                break;
+                             
+		}
+echo '<center>'.$email_msg.'</center>';
+echo '<script type="text/javascript">alert("'.$message.'");</script>';
+		
+	
+}
+{
+     echo '<br/>Users registered for collaboration';
+
+    $rows = $wp_user ->get_range("", "", 1000000, null, array('wp_email', 'email'));
+
+echo '
+<div class="container" >
+<table id="table_id" class="bordered">
+    <thead>
+        <tr>
+            <th>S.N.</th>
+            <th>Email</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Affiliation</th>
+            <th>Location</th>
+            <th>Website</th>
+            <th>G+ URL</th>
+            <th>gDrive URL</th>
+            <th>Youtube URL</th>
+            <th>Videos Count</th>
+            <th>Shots Count</th>
+            <th>Script Coverage</th>
+            <th>Script Progress</th>
+            <th>User Type</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>';
+    $i=1;
+    foreach($rows as $key => $columns) 
+    {
+    $email=$columns['email'];
+     
+   
+    $data = $collab_user ->get($columns['email']);
+echo'
+        <tr id="'.$email.'">
+            <td>'.$i++.'</td>
+            <td><a href="../collaboration-emails?email='.urlencode($email).'" target="_blank"><span id="'.$email.'email">'.$email.'</a></span>
+            <input id="'.$email.'wp_email_input" type="hidden" value="'.$key.'" />
+            <input id="'.$email.'email_input" class="replace" type="text" value="" /></td>
+            <td><span id="'.$email.'first_name">'.$data ['first_name'].'</span>
+            <input id="'.$email.'first_name_input" class="replace" type="text" value="" /></td>
+            <td><span id="'.$email.'last_name">'.$data ['last_name'].'</span>
+            <input id="'.$email.'last_name_input" class="replace" type="text" value="" /></td>
+            <td><span id="'.$email.'aff">'.$data ['aff'].'</span>
+            <input id="'.$email.'aff_input" class="replace" type="text" value="" /></td>
+            <td><span id="'.$email.'location">'.$data ['location'].'</span>
+            <input id="'.$email.'location_input" class="replace" type="text" value="" /></td>
+            <td><a href="'.$data ['website'].'" target="_blank"><span id="'.$email.'website">'.$data ['website'].'</span></a>
+            <input id="'.$email.'website_input" class="replace" type="text" value="" /></td>
+            <td><a href="'.$data ['url_gplus'].'" target="_blank"><span id="'.$email.'url_gplus">'.$data ['url_gplus'].'</span></a>
+            <input id="'.$email.'url_gplus_input" class="replace" type="text" value="" /></td>
+            <td><a href="'.$data ['gdrive'].'" target="_blank"><span id="'.$email.'gdrive">'.$data ['gdrive'].'</span></a>
+            <input id="'.$email.'gdrive_input" class="replace" type="text" value="" /></td>
+            <td><a href="'.$data ['url_yt'].'" target="_blank"><span id="'.$email.'url_yt">'.$data ['url_yt'].'</span></a>
+            <input id="'.$email.'url_yt_input" class="replace" type="text" value="" /></td>
+            <td><span id="'.$email.'videos_count">'.$data ['videos_count'].'</span>
+            <input id="'.$email.'videos_count_input" class="replace" type="text" value="" /></td>
+            <td><span id="'.$email.'shots_count">'.$data ['shots_count'].'</span>
+            <input id="'.$email.'shots_count_input" class="replace" type="text" value="" /></td>
+            <td><span id="'.$email.'script_coverage">'.$data ['script_coverage'].'</span>
+            <input id="'.$email.'script_coverage_input" class="replace" type="text" value="" /></td>
+            <td><span id="'.$email.'script_progress">'.$data ['script_progress'].'</span>
+            <input id="'.$email.'script_progress_input" class="replace" type="text" value="" /></td>
+            <td>'.$data ['user_type'].'</td>
+            <td>'.$data ['status'].'</td>
+            <td>
+            <div class="user_action_links"><span id="'.$email.'editLink"><a href="javascript: replace_with_input(\''.$email.'\')" class="link">Edit</a> </span><span id="'.$email.'saveLink" class="saveLinks"><a  href="javascript: saveUpdatedData(\''.$email.'\')" class="link">Save</a> <a href="javascript: replace_back(\''.$email.'\')" class="link">Cancel</a> </span> <a href="?action=changeStatus&email='.$columns['email'].'&status=Approved">Approve</a> <a href="?action=changeStatus&email='.$columns['email'].'&status=Denied">Deny</a></div></td>
+   		</tr>
+';
+    }
+echo '
+    </tbody>
+</table>
+</div>
+';
+
+}
+
+
+	$pool->close(); 
+	
+	$sys->close();
+
+[/insert_php]
+
+<script src="../custom-code/collaboration.js" type="text/javascript"></script>
+
+<script src="../custom-code/script2.js" type="text/javascript"></script>

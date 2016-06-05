@@ -1,8 +1,8 @@
-.container
-{
-	height:auto;
-        overflow-y: auto;
-        overflow-x: auto;
+.grid-span-9 {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: auto;
 }
 
 table {
@@ -66,7 +66,10 @@ table {
     -webkit-border-radius: 6px 0 0 0;
     border-radius: 6px 0 0 0;
 }
-
+.bordered
+{
+ margin-right:40px;
+}
 .bordered th:last-child {
     -moz-border-radius: 0 6px 0 0;
     -webkit-border-radius: 0 6px 0 0;

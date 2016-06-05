@@ -46,3 +46,34 @@ green
 	float:left;
 	text-align:left;
 }
+
+.editable
+{
+  border: none;
+}
+
+
+.replace {
+	min-width:100px;
+}
+
+note
+{
+	font-size:10px;
+	margin-bottom:-20px;
+}
+
+.link:hover
+{
+	cursor: pointer;
+}
+
+.user_action_links a
+{
+	display:inline;
+}
+
+.saveLinks
+{
+	display:none;
+}
