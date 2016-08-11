@@ -22,6 +22,7 @@ import time
 import main
 from edl_engine import EndEvent
 from edl_engine import DummyEvent
+from edl_engine import StartEvent
 
 logger = None
 Operation = me.mod.classes.Operation
@@ -185,7 +186,7 @@ class StreamingResourceManager(object):
 ################################################
 class VideoEdlEngine(object):
 	preloadTime = 5
-	gapDeadline = 1
+	gapDeadline = 0.1
 	clipMaxTime = 0
 	lastEventClipEndTime = None
 	scheduledEvents = None
@@ -229,9 +230,11 @@ class VideoEdlEngine(object):
 		# check for timeline gaps
 		# incoming video events should not have them, as they 
 		# were sorted by clip start time
-		if self.hasTimelineGap(event):
+		gapStartTime, gapEndTime = self.hasTimelineGap(event)
+		#if self.hasTimelineGap(event):
+		if gapStartTime:
 			logger.warning('inserting dummy event')
-			dummyEvent = self.getDummyEvent(event)
+			dummyEvent = self.getDummyEvent(gapStartTime, gapEndTime)
 			freeRes = self.resMan.getFreeResources()
 			if len(freeRes) > 0:
 				self.scheduleOnResource(dummyEvent, freeRes[0])
@@ -252,31 +255,32 @@ class VideoEdlEngine(object):
 					return ev
 		return None
 
+	def getPrevScheduledEvent(self, event):
+		if len(self.scheduledEvents) > 0:
+			eventsByStartTime = sorted(self.scheduledEvents, key=lambda e: e.clipStartTime, reverse=True)
+			for ev in eventsByStartTime:
+				if event.clipStartTime > ev.clipStartTime:
+					return ev
+		return None
+
 	def hasTimelineGap(self, event):
 		logger.debug('checking for timeline gap...')
 		nextEvent = self.getNextScheduledEvent(event)
 		if not nextEvent:
-			logger.warning('no new scheduled event. need a dummy.')
-			return True
+			logger.warning('no new scheduled event after '+str(event)+'. need a dummy.')
+			return (event.clipEndTime, None) #True
 		else:
 			gap = nextEvent.clipStartTime.toFrames() - event.clipEndTime.toFrames()
 			if gap > 1:
 				logger.warning('timeline gap detected: '+str(gap)+' frames (between events '+str(event.id)+' and '+str(nextEvent.id)+')')
-				return True
-		return False
-		# lastEvent = self.scheduledEvents[0]
-		# if event.id == lastEvent.id:
-		# 	logger.warning('no new scheduled events. need a dummy.')
-		# 	return True
-		# else:
-		# 	gap = lastEvent.clipStartTime.toFrames() - event.clipEndTime.toFrames()
-		# 	if abs(gap) > 1:
-		# 		logger.warning('timeline gap detected: '+str(gap)+' frames (between events '+str(event.id)+' and '+str(lastEvent.id)+')')
-		# 		return True
-		# return False
+				return (event.clipEndTime, nextEvent.clipStartTime) # True
+		return (None, None) # False
 
-	def getDummyEvent(self, lastEvent):
-		dummyEvent = DummyEvent(str(lastEvent.clipEndTime), "23:59:59:00")
+	def getDummyEvent(self, startTime, endTime):
+		startTimeStr = str(startTime) if startTime else "00:00:00:00"
+		endTimeStr = str(endTime) if endTime else "23:59:59:00"
+		dummyEvent = DummyEvent(startTimeStr, endTimeStr)
+		dummyEvent.openEnded = (endTime == None)
 		return dummyEvent
 
 	def processEvent(self, event, res):
@@ -287,31 +291,32 @@ class VideoEdlEngine(object):
 				self.timeline.scheduleOperations(self.clipMaxTime+2, [DispatchOperation(self.cleanupCurrentRun)])
 		else:
 			if event:
-				if event.id == 1 and self.startTime == None:
-					self.startTime = main.timeFunc()+self.preloadTime
-					logger.debug('first event is '+str(event.id)+'. start time is at '+str(self.startTime)+'('+str(self.startTime-main.timeFunc())+' seconds from now)')
+				if isinstance(event, StartEvent):
+					secondsFromNow = event.startTime - int(time.time())
+					if secondsFromNow <= 0:
+						logger.warning('received start time is in the past (bad NTP sync?)')
+						return
+					self.startTime = main.timeFunc()+secondsFromNow
+					logger.info('received start event. start time is at '+str(self.startTime)+'('+str(self.startTime-main.timeFunc())+' seconds from now)')
+				# if event.id == 1 and self.startTime == None:
+					# self.startTime = main.timeFunc()+self.preloadTime
+					# logger.debug('first event is '+str(event.id)+'. start time is at '+str(self.startTime)+'('+str(self.startTime-main.timeFunc())+' seconds from now)')
 				if self.startTime:
 					if (event.channel == 'V' or event.channel == 'AA/V') \
 					and (event.videoUrl != None):
-						# check for timeline gaps
-						# incoming video events should not have them, as they 
-						# were sorted by clip start time
-						# if self.hasTimelineGap(event):
-						# 	logger.warning('inserting dummy event')
-						# 	dummyEvent = self.getDummyEvent(event)
-						# 	self.scheduleOnResource(dummyEvent, res)
-						# check whether we had dummy events before
 						logger.debug('processing event '+str(event))
 						self.scheduleOnResource(event, res)
 						self.lastEventClipEndTime = event.clipEndTime
 				else:
-					logger.warning('received event, but it\'s is not 1. processing starts with event ID 1. sorry.')
+					logger.warning('received event, but it\'s is not 1. processing starts with event ID 1. sorry. received: '+str(event))
 
 	def scheduleOnResource(self, event, res):
 		global logger
-		logger.info("scheduling event "+str(event)+" on resource "+str(res.compPath))
+		nowSec = main.timeFunc()
+		logger.info(str(nowSec)+" scheduling event "+str(event)+" on resource "+str(res.compPath))
 
-		lastDummy = self.scheduledEvents[0] if len(self.scheduledEvents) > 0 and isinstance(self.scheduledEvents[0], DummyEvent) else None
+		prevEvent = self.getPrevScheduledEvent(event)
+		lastDummy = prevEvent if isinstance(prevEvent, DummyEvent) else None #self.scheduledEvents[0] if len(self.scheduledEvents) > 0 and isinstance(self.scheduledEvents[0], DummyEvent) else None
 		self.scheduledEvents.insert(0, event)
 		self.resMan.occupyResource(res)
 		hasVideoUrl = (event.videoUrl != 'none')
@@ -333,14 +338,22 @@ class VideoEdlEngine(object):
 			# blinking workaround:
 			# schedule start playback operation 1s earlier to avoid
 			# blinking when switching b/w clips
-			self.timeline.scheduleOperations(t+playbackOffset, [StartPlaybackOperation(event, res)])
+			# but check that it's not earlier than preload operation
+			logger.info(str(nowSec)+" playback start at "+str(t+playbackOffset)+". event will be activated at "+str(t))
+			if t+playbackOffset < nowSec:
+				logger.info("playback start time ("+str(t+playbackOffset)+") is "+str(nowSec-t-playbackOffset)+" earlier than preload ("+str(nowSec)+"). adjusted to "+str(nowSec))
+				self.timeline.scheduleOperationFromNow(0, StartPlaybackOperation(event, res))
+			else:
+				self.timeline.scheduleOperations(t+playbackOffset, [StartPlaybackOperation(event, res)])
 			self.timeline.scheduleOperations(t, [SwitchLiveOperation(res, self.liveSwitch, event, main.onStreamSwitched)])
 
 			# check if the last event was a dummy and release it's resource if it was
-			if lastDummy:
+			if lastDummy and lastDummy.openEnded:
+				logger.info('previous event was open-ended dummy. updating it...')
 				self.timeline.scheduleOperations(t, [ReleaseResourceOperation(event, lastDummy.res, self.resMan)])
 				self.timeline.removeOperations(lastDummy.releaseTime)
 				lastDummy.clipEndTime = event.clipStartTime
+				lastDummy.openEnded = False
 				main.onDummyUpdate(lastDummy)
 
 			# schedule playback stop - StopPlaybackOperation
@@ -362,8 +375,11 @@ class VideoEdlEngine(object):
 				event.releaseTime = t
 		
 		# setup check for upcoming events and timeline gaps for all scheduled events except dummies
+		# the reason why we need to actively check for upcoming events is that at this point, there could
+		# no subsequent events, but they may be received in the future. thus, we setup a check in the 
+		# future gapDeadline seconds before this event releases
 		if not isinstance(event, DummyEvent):
-			schedTime = t-self.gapDeadline if event.getClipDuration() > self.gapDeadline else event.getClipDuration()/2.
+			schedTime = (t-self.gapDeadline) if event.getClipDuration() > self.gapDeadline else (t-event.getClipDuration()/2.)
 			self.timeline.scheduleOperations(schedTime, [CheckUpcomingEvent(event)])
 
 		# track overall clip time

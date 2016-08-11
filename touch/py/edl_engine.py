@@ -233,6 +233,7 @@ class DummyEvent(EventBase):
 		self.startTimeOffset = 0
 		self.res = None
 		self.releaseTime = 0
+		self.openEnded = False
 
 	def __str__(self):
 		return "[DUMM| "+str(self.clipStartTime)+"-"+str(self.clipEndTime)+"]"
@@ -244,7 +245,8 @@ class Event(EventBase):
 	def __init__(self, jsonData):
 		super(Event, self).__init__()
 		self.jsonData = jsonData
-		self.id = int(jsonData[self.eventIdKey])
+		if self.eventIdKey in jsonData.keys(): self.id = int(jsonData[self.eventIdKey])
+		else: self.id = 0
 
 class EndEvent(Event):
 	srcUrlKey = 'src_url'
@@ -261,6 +263,21 @@ class EndEvent(Event):
 
 	def shortStr(self):
 		return "["+str(self.id)+" | "+self.clipStartTime+" ]"
+
+class StartEvent(Event):
+	startTimeKey = 'start_time'
+
+	def __init__(self, jsonData):
+		super(StartEvent, self).__init__(jsonData)
+		if not self.startTimeKey in jsonData.keys():
+			raise Exception('bad format', 'start event is not formatted correctly')
+		self.startTime = int(jsonData[self.startTimeKey])
+
+	def __str__(self):
+		return "["+str(self.id)+" | start ]"
+
+	def shortStr(self):
+		return "["+str(self.id)+" | "+self.startTime+" ]"
 
 class EditEvent(Event):
 	eventIdKey = 'event_id'
@@ -328,7 +345,13 @@ class EventPoller(Pipeliner):
 				event = EndEvent(eventData)
 				logger.info('end event created '+str(event))
 			except Exception as e:
-				logger.error('error creating EndEvent: %r\ndata: %r'%(e, eventData))
+				logger.error('error creating EndEvent: (%r) from data: %r, trying StartEvent...'%(e, eventData))
+		if event == None:
+			try:
+				event = StartEvent(eventData)
+				logger.info('start event created '+str(event))
+			except Exception as e:
+				logger.error('error creating StartEvent: (%r) from data: %r'%(e, eventData))
 		if event != None:
 			self.onNewEvent(event)
 
