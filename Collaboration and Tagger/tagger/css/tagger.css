@@ -1,0 +1,74 @@
+@charset "utf-8";
+/* CSS Document */
+
+
+
+#playlist .padding-bottom label
+{
+	display:inline-block;
+	width:60px;
+	text-align:right;
+}
+#loading_icon
+{
+	text-align:center;
+	margin-left:auto;
+	margin-right:auto;
+}
+
+.sticky-wrapper
+{
+	display:none;	
+}
+.update_message
+{
+	text-align:center;
+}
+
+
+.container .video
+{
+	width:240px;
+	margin-bottom:-50px;
+	padding-bottom:0px;
+	text-align:center;
+}
+
+.container .video h3
+{
+	font-size:18px;
+	text-align:center;
+	display:block;
+}
+.container .video h4
+{
+	font-size:16px;
+	text-align:center;
+	margin-bottom:-20px;
+	padding-bottom:0px;
+	display:block;
+}
+
+.container p
+{
+	display:block;
+	width:250px;
+	text-align:left;
+	font-style:italic;
+	font-size:14px;
+}
+
+.container .desc
+{
+	font-size:16px;
+}
+
+/*
+#header
+{
+	display:none;   /*hides top bar 
+}
+
+
+
+*/

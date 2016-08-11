@@ -1,0 +1,82 @@
+<a href="../collaboration-users" style="float:right"><- go back</a>
+[insert_php]
+
+require_once('custom-code/lib/autoload.php');
+use phpcassa\Connection\ConnectionPool;
+use phpcassa\ColumnFamily;
+use phpcassa\SystemManager;
+use phpcassa\Schema\StrategyClass;
+use phpcassa\ColumnSlice;
+// Create a  new keyspace and column family
+	$sys = new SystemManager('127.0.0.1');
+	// Start a connection pool, create our ColumnFamily instance
+	$pool = new ConnectionPool('s4gs', array('127.0.0.1'));	
+	$collab_user = new ColumnFamily($pool, 'users');
+	$wp_user = new ColumnFamily($pool, 'wp_emails');
+
+if(isset($_REQUEST['email']))
+{
+                $email=$_REQUEST['email'];
+                if(($collab_user->get_count($email))>0)
+                {
+                  if(isset($_POST['email_msg']))
+                  {
+                                $email_msg=$_POST['email_msg'];
+                        
+				$to = $email;
+				$subject = 'Search for Global Song';
+				
+					
+				$headers = 'From: no-reply@remap.ucla.edu'. "\r\n";
+                                $headers .= 'Cc: zoe@remap.ucla.edu' . "\r\n";
+                                $headers .= 'Reply-To: zoe@remap.ucla.edu' . "\r\n";
+				$headers .= "MIME-Version: 1.0\r\n";
+				$headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
+
+
+				// Can do no-reply@remap.ucla.edu, or the-archive@remap.ucla.edu
+				// Can't do without -f specification
+				
+				if (mail($to,$subject,$email_msg,$headers)) 
+				{
+				     echo '<script type="text/javascript">alert("Email Sent to '.$to.'");</script>';
+				}
+				else 
+				{
+			             echo '<script type="text/javascript">alert("Email sending failed");</script>';
+				}
+                  }
+
+ 
+                  echo '
+
+
+<p style="text-align: center;"><strong>User Email:</strong> '.$email.'</p>
+
+<form method="post">
+<textarea name="email_msg" placeholder="Email Message"></textarea>
+<input type="submit" value="Send Email" />
+<input type="hidden" name="email" value="'.$email.'" />
+</form>
+
+
+
+<p class="sent_msg">
+<span><strong>Sent To</strong>: a@a.com <strong>Sent From: </strong>b@b.com <b>Date: </b>30-03-2016 <strong>Time:</strong> 11:00 AM</span>
+a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message a long message</p> 
+                       ';
+                }
+                else
+                { 
+                    echo 'Email not found in database. ';
+                    echo 'Please go back to <a href="../collaboration-users">Collaboration Users Page</a>';
+                }
+}
+else
+{
+    echo 'Please go back to <a href="../collaboration-users">Collaboration Users Page</a>';
+}
+
+[/insert_php]
+
+<p style="text-align: center;"><script src="../custom-code/collaboration.js" type="text/javascript"></script><script src="../custom-code/script2.js" type="text/javascript"></script></p>
