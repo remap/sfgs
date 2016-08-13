@@ -309,13 +309,13 @@ class VideoEdlEngine(object):
 				if isinstance(event, StartEvent):
 					secondsFromNow = event.startTime - int(time.time())
 					if secondsFromNow <= 0:
-						logger.warning(str(nowSec)+' received start time is in the past - '+str(event.startTime)+' ('+str(secondsFromNow)+'sec). now - '+str(time.time())+'. bad NTP sync?')
+						logger.warning(str(nowSec)+' received start time is in the past - '+str(event.startTime)+' ('+str(secondsFromNow)+'sec. now - '+str(time.time())+'. bad NTP sync?')
 						return
 					self.startTime = main.timeFunc()+secondsFromNow
-					logger.info('received start event. start time is at '+str(self.startTime)+'('+str(self.startTime-nowSec)+' seconds from now)')
+					logger.info('received start event. start time is at '+str(self.startTime)+'('+str(self.startTime-time.time())+' seconds from now)')
 				# if event.id == 1 and self.startTime == None:
 					# self.startTime = main.timeFunc()+self.preloadTime
-					# logger.debug('first event is '+str(event.id)+'. start time is at '+str(self.startTime)+'('+str(self.startTime-main.timeFunc())+' seconds from now)')
+					# logger.debug('first event is '+str(event.id)+'. start time is at '+str(self.startTime)+'('+str(self.startTime-nowSec)+' seconds from now)')
 				if self.startTime:
 					if (event.channel == 'V' or event.channel == 'AA/V') \
 					and (event.videoUrl != None):
