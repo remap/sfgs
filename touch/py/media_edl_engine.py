@@ -160,6 +160,19 @@ class CheckUpcomingEvent(Operation):
 		logger.info(str(time)+' checking for upcoming events or gaps...')
 		me.mod.vars.videoEdlEngine.checkForTimelineGaps(self.event)
 
+class TitleOperation(Operation):
+	def __init__(self, title):
+		self.title = title
+		self.priority = self.OperationPriorityHighest
+
+	def __str__(self):
+		return "set title '"+self.title+"'"
+
+	def run(self, time):
+		global logger
+		logger.info(str(time)+ ' set title: '+self.title)
+		op('/project/title/text').text = self.title
+
 ################################################
 class StreamingResourceManager(object):
 	def __init__(self):
@@ -308,6 +321,8 @@ class VideoEdlEngine(object):
 						logger.debug('processing event '+str(event))
 						self.scheduleOnResource(event, res)
 						self.lastEventClipEndTime = event.clipEndTime
+					else:
+						self.dispatchEvent(event)
 				else:
 					logger.warning('received event, but it\'s is not 1. processing starts with event ID 1. sorry. received: '+str(event))
 
@@ -386,3 +401,10 @@ class VideoEdlEngine(object):
 		# track overall clip time
 		if t > self.clipMaxTime:
 			self.clipMaxTime = t
+
+	def dispatchEvent(self, event):
+		if isinstance(event, TextEvent):
+			self.timeline.scheduleOperations(self.startTime+event.titleStartTime.toSeconds(),\
+					[TitleOperation(event.title)])
+			self.timeline.scheduleOperations(self.startTime+event.titleEndTime.toSeconds(),\
+					[TitleOperation("")])

@@ -248,6 +248,26 @@ class Event(EventBase):
 		if self.eventIdKey in jsonData.keys(): self.id = int(jsonData[self.eventIdKey])
 		else: self.id = 0
 
+class TextEvent(Event):
+	dstEndTimeKey = 'dst_end_time'
+	dstStartTimeKey = 'dst_start_time'
+	titleKey = 'title'
+
+	def __init__(self, jsonData):
+		super(TextEvent, self).__init__()
+		if jsonData[self.framerateKey] != 'none':
+			self.videoFramerate = float(jsonData[self.framerateKey])
+		self.titleStartTime = StreamTimestamp(jsonData[self.dstStartTimeKey], framerate = self.videoFramerate)
+		self.titleEndTime = StreamTimestamp(jsonData[self.dstEndTimeKey], framerate = self.videoFramerate)
+		if self.titleKey in jsonData.keys(): 
+			self.title = jsonData[self.titleKey]
+		else:
+			self.title = ""
+
+	def __str__(self):
+		return "["+str(self.id)+" | title: "+self.title+" ==> "+\
+			str(self.titleStartTime)+"-"+str(self.titleEndTime)+"]"
+
 class EndEvent(Event):
 	srcUrlKey = 'src_url'
 	endToken = 'end'
