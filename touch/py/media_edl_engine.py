@@ -298,6 +298,7 @@ class VideoEdlEngine(object):
 
 	def processEvent(self, event, res):
 		global logger
+		nowSec = main.timeFunc()
 		if isinstance(event, EndEvent):
 			if self.startTime:
 				logger.info('end event received: '+str(event))
@@ -307,10 +308,10 @@ class VideoEdlEngine(object):
 				if isinstance(event, StartEvent):
 					secondsFromNow = event.startTime - int(time.time())
 					if secondsFromNow <= 0:
-						logger.warning('received start time is in the past (bad NTP sync?)')
+						logger.warning(str(nowSec)+' received start time is in the past - '+str(event.startTime)+' ('+str(secondsFromNow)+'sec. bad NTP sync?)')
 						return
 					self.startTime = main.timeFunc()+secondsFromNow
-					logger.info('received start event. start time is at '+str(self.startTime)+'('+str(self.startTime-main.timeFunc())+' seconds from now)')
+					logger.info('received start event. start time is at '+str(self.startTime)+'('+str(self.startTime-time.time())+' seconds from now)')
 				# if event.id == 1 and self.startTime == None:
 					# self.startTime = main.timeFunc()+self.preloadTime
 					# logger.debug('first event is '+str(event.id)+'. start time is at '+str(self.startTime)+'('+str(self.startTime-main.timeFunc())+' seconds from now)')
