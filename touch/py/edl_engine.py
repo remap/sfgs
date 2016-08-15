@@ -259,7 +259,7 @@ class TextEvent(Event):
 	def __init__(self, jsonData):
 		super(TextEvent, self).__init__(jsonData)
 		if jsonData[self.typeKey] != self.textTypeKey: 
-			raise Exception('bad format', 'text event is not formatted correcrtly')
+			raise Exception('bad format', 'text event is not formatted correctly')
 		if jsonData[self.framerateKey] != 'none':
 			self.videoFramerate = float(jsonData[self.framerateKey])
 		self.titleStartTime = StreamTimestamp(jsonData[self.dstStartTimeKey], framerate = self.videoFramerate)
@@ -287,7 +287,7 @@ class EndEvent(Event):
 		return "["+str(self.id)+" | end ]"
 
 	def shortStr(self):
-		return "["+str(self.id)+" | "+self.clipStartTime+" ]"
+		return "["+str(self.id)+" | "+str(self.clipStartTime)+" ]"
 
 class StartEvent(Event):
 	startTimeKey = 'start_time'
@@ -302,7 +302,7 @@ class StartEvent(Event):
 		return "["+str(self.id)+" | start ]"
 
 	def shortStr(self):
-		return "["+str(self.id)+" | "+self.startTime+" ]"
+		return "["+str(self.id)+" | "+str(self.startTime)+" ]"
 
 class EditEvent(Event):
 	eventIdKey = 'event_id'
