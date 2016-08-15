@@ -56,7 +56,7 @@ class PreloadOperation(VideoOperation):
 
 	def __str__(self):
 		startTime = self.event.videoStartTime.toSeconds()+self.event.startTimeOffset
-		return "preload, " + self.event.shortStr() + ', ' + str(startTime) + ', ' +str(self.event.ytUrl)
+		return "preload, " + self.event.shortStr() +', '+str(self.ppController.compPath) + ', ' + str(startTime) + ', ' +str(self.event.ytUrl)
 
 	def run(self, time):
 		global logger
@@ -75,7 +75,7 @@ class StartPlaybackOperation(VideoOperation):
 		self.priority = self.OperationPriorityInitiate
 
 	def __str__(self):
-		return "start playback, " + self.event.shortStr()
+		return "start playback, " + self.event.shortStr()+', '+str(self.ppController.compPath)
 
 	def run(self, time):
 		global logger
@@ -89,7 +89,7 @@ class StopPlaybackOperation(VideoOperation):
 		self.priority = self.OperationPriorityFinalize
 
 	def __str__(self):
-		return "stop playback, " + self.event.shortStr()
+		return "stop playback, " + self.event.shortStr()+', '+str(self.ppController.compPath)
 
 	def run(self, time):
 		global logger
@@ -172,7 +172,7 @@ class TitleOperation(Operation):
 	def run(self, time):
 		global logger
 		logger.info(str(time)+ ' set title: '+self.title)
-		op('/project/title/text').text = self.title
+		op('/project1/title/text').text = self.title
 
 ################################################
 class StreamingResourceManager(object):
@@ -312,7 +312,7 @@ class VideoEdlEngine(object):
 						logger.warning(str(nowSec)+' received start time is in the past - '+str(event.startTime)+' ('+str(secondsFromNow)+'sec. now - '+str(time.time())+'. bad NTP sync?')
 						return
 					self.startTime = main.timeFunc()+secondsFromNow
-					logger.info('received start event. start time is at '+str(self.startTime)+'('+str(self.startTime-time.time())+' seconds from now)')
+					logger.info('received start event. start time is at '+str(self.startTime)+'('+str(secondsFromNow)+' seconds from now)')
 				# if event.id == 1 and self.startTime == None:
 					# self.startTime = main.timeFunc()+self.preloadTime
 					# logger.debug('first event is '+str(event.id)+'. start time is at '+str(self.startTime)+'('+str(self.startTime-nowSec)+' seconds from now)')

@@ -251,10 +251,15 @@ class Event(EventBase):
 class TextEvent(Event):
 	dstEndTimeKey = 'dst_end_time'
 	dstStartTimeKey = 'dst_start_time'
-	titleKey = 'title'
+	titleKey = 'text'
+	typeKey = 'type'
+	textTypeKey = 'title'
+	framerateKey = 'frame_rate'
 
 	def __init__(self, jsonData):
-		super(TextEvent, self).__init__()
+		super(TextEvent, self).__init__(jsonData)
+		if jsonData[self.typeKey] != self.textTypeKey: 
+			raise Exception('bad format', 'text event is not formatted correcrtly')
 		if jsonData[self.framerateKey] != 'none':
 			self.videoFramerate = float(jsonData[self.framerateKey])
 		self.titleStartTime = StreamTimestamp(jsonData[self.dstStartTimeKey], framerate = self.videoFramerate)
@@ -371,7 +376,13 @@ class EventPoller(Pipeliner):
 				event = StartEvent(eventData)
 				logger.info('start event created '+str(event))
 			except Exception as e:
-				logger.error('error creating StartEvent: (%r) from data: %r'%(e, eventData))
+				logger.error('error creating StartEvent: (%r) from data: %r, trying TextEvent...'%(e, eventData))
+		if event == None:
+			try:
+				event = TextEvent(eventData)
+				logger.info('text event created '+str(event))
+			except Exception as e:
+				logger.error('error creating TextEvent: (%r) from data: %r'%(e,eventData))
 		if event != None:
 			self.onNewEvent(event)
 
