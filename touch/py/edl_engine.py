@@ -81,12 +81,12 @@ class Pipeliner(DataFetcher):
 		self.bootstrap()
 
 	def bootstrap(self):
-		rightmostInterest = Interest(Name(self.dataPath))
-		rightmostInterest.setChildSelector(0)
+		leftmostInterest = Interest(Name(self.dataPath))
+		leftmostInterest.setChildSelector(0)
 		if self.latestExpressedNo:
-			rightmostInterest.getExclude().appendAny()
-			rightmostInterest.getExclude().appendComponent(self.latestExpressedNo)
-		self.expressInterest(rightmostInterest)
+			leftmostInterest.getExclude().appendAny()
+			leftmostInterest.getExclude().appendComponent(self.latestExpressedNo)
+		self.expressInterest(leftmostInterest)
 
 	def process(self):
 		self.face.processEvents()
@@ -287,7 +287,7 @@ class EndEvent(Event):
 		return "["+str(self.id)+" | end ]"
 
 	def shortStr(self):
-		return "["+str(self.id)+" | "+str(self.clipStartTime)+" ]"
+		return "["+str(self.id)+" | end "+str(self.clipStartTime)+" ]"
 
 class StartEvent(Event):
 	startTimeKey = 'start_time'
@@ -302,7 +302,7 @@ class StartEvent(Event):
 		return "["+str(self.id)+" | start ]"
 
 	def shortStr(self):
-		return "["+str(self.id)+" | "+str(self.startTime)+" ]"
+		return "["+str(self.id)+" | start at "+str(self.startTime)+" ("+str(self.startTime-time.time())+" sec from now)]"
 
 class EditEvent(Event):
 	eventIdKey = 'event_id'

@@ -303,7 +303,7 @@ class VideoEdlEngine(object):
 		if isinstance(event, EndEvent):
 			if self.startTime:
 				logger.info('end event received: '+str(event))
-				self.timeline.scheduleOperations(self.clipMaxTime+2, [DispatchOperation(self.cleanupCurrentRun)])
+				self.timeline.scheduleOperations(self.clipMaxTime, [DispatchOperation(self.cleanupCurrentRun)])
 		else:
 			if event:
 				if isinstance(event, StartEvent):
